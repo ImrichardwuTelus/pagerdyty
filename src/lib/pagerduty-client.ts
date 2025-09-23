@@ -26,8 +26,8 @@ export class PagerDutyClient {
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
+        'Accept': 'application/json',
         'Authorization': `Token token=${this.apiToken}`,
-        'Accept': 'application/vnd.pagerduty+json;version=2',
         'Content-Type': 'application/json',
       },
     });
@@ -176,6 +176,46 @@ export class PagerDutyClient {
 
   async getAllServices(): Promise<Service[]> {
     return this.getServicesWithDetails();
+  }
+
+  async updateService(id: string, serviceData: Partial<Service>): Promise<{ service: Service }> {
+    const url = new URL(`/services/${id}`, this.baseUrl);
+
+    const response = await fetch(url.toString(), {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Token token=${this.apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ service: serviceData }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`PagerDuty API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async createService(serviceData: Omit<Service, 'id' | 'self' | 'html_url' | 'created_at'>): Promise<{ service: Service }> {
+    const url = new URL('/services', this.baseUrl);
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Token token=${this.apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ service: serviceData }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`PagerDuty API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
   }
 }
 

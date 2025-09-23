@@ -43,6 +43,26 @@ export default function ServiceManagementDashboard() {
     getOverallProgress,
   } = useExcelData();
 
+  // Listen for updates from service editor
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === 'UPDATE_EXCEL_ROW') {
+        const { rowId, updates } = event.data;
+        console.log('Received Excel update from service editor:', { rowId, updates });
+
+        // Update each field in the Excel data
+        Object.entries(updates).forEach(([field, value]) => {
+          updateCell(rowId, field as keyof ExcelServiceRow, value as string);
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [updateCell]);
+
   // UI State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
   const [filterConfig, setFilterConfig] = useState<FilterConfig>({
@@ -66,6 +86,23 @@ export default function ServiceManagementDashboard() {
       loadLocalExcelFile('mse_trace_analysis_enriched_V2.xlsx');
     }
   }, [data.length, loading, error, loadLocalExcelFile]);
+
+  // Scroll on load functionality for large datasets
+  useEffect(() => {
+    if (data.length > 0 && !loading) {
+      // Scroll to data table when data loads, especially useful for large datasets
+      const tableElement = document.getElementById('service-data-table');
+      if (tableElement) {
+        setTimeout(() => {
+          tableElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest'
+          });
+        }, 500); // Small delay to ensure rendering is complete
+      }
+    }
+  }, [data.length, loading]);
 
   // Progress calculations
   const progress = getOverallProgress();
@@ -789,7 +826,7 @@ export default function ServiceManagementDashboard() {
 
         {/* Data Table */}
         {data.length > 0 ? (
-          <div className="bg-white shadow-lg rounded-xl border border-gray-200/60 overflow-hidden">
+          <div id="service-data-table" className="bg-white shadow-lg rounded-xl border border-gray-200/60 overflow-hidden">
             <div className="overflow-x-auto" style={{ maxHeight: '70vh' }}>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -843,7 +880,7 @@ export default function ServiceManagementDashboard() {
                             window.open(
                               `/service-editor/${serviceName}?id=${serviceId}&cmdb=${
                                 row.cmdb_id || ''
-                              }`,
+                              }&rowId=${row.id}`,
                               '_blank'
                             );
                           }}

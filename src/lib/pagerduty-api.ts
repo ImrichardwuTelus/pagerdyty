@@ -17,8 +17,8 @@ export class PagerDutyAPI {
     const response = await fetch(url, {
       ...options,
       headers: {
-        Authorization: `Token token=${this.apiToken}`,
-        Accept: 'application/vnd.pagerduty+json;version=2',
+        'Accept': 'application/json',
+        'Authorization': `Token token=${this.apiToken}`,
         'Content-Type': 'application/json',
         ...options?.headers,
       },
