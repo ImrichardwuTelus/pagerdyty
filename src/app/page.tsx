@@ -1,9 +1,5 @@
-import ExcelDashboard from '@/components/ExcelDashboard';
+import ServiceManagementDashboard from '@/components/ServiceManagementDashboard';
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <ExcelDashboard />
-    </div>
-  );
+  return <ServiceManagementDashboard />;
 }
