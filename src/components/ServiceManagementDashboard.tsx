@@ -42,25 +42,18 @@ export default function ServiceManagementDashboard() {
     getOverallProgress,
   } = useExcelData();
 
-  // Listen for updates from service editor
+  // Listen for focus events to refresh data when returning from service editor
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-
-      if (event.data.type === 'UPDATE_EXCEL_ROW') {
-        const { rowId, updates } = event.data;
-        console.log('Received Excel update from service editor:', { rowId, updates });
-
-        // Update each field in the Excel data
-        Object.entries(updates).forEach(([field, value]) => {
-          updateCell(rowId, field as keyof ExcelServiceRow, value as string);
-        });
+    const handleFocus = () => {
+      // Reload data when window regains focus (user returns from service editor)
+      if (data.length > 0) {
+        loadLocalExcelFile('mse_trace_analysis_enriched_V2.xlsx');
       }
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [updateCell]);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [data.length, loadLocalExcelFile]);
 
   // UI State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
@@ -78,12 +71,6 @@ export default function ServiceManagementDashboard() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  // Auto-load the local Excel file on component mount
-  useEffect(() => {
-    if (data.length === 0 && !loading && !error) {
-      loadLocalExcelFile('mse_trace_analysis_enriched_V2.xlsx');
-    }
-  }, [data.length, loading, error, loadLocalExcelFile]);
 
   // Scroll on load functionality for large datasets
   useEffect(() => {
@@ -863,12 +850,9 @@ export default function ServiceManagementDashboard() {
                               row.service_name_mp || 'unnamed-service'
                             );
                             const serviceId = encodeURIComponent(row.service_id || row.id);
-                            window.open(
-                              `/service-editor/${serviceName}?id=${serviceId}&cmdb=${
-                                row.cmdb_id || ''
-                              }&rowId=${row.id}`,
-                              '_blank'
-                            );
+                            window.location.href = `/service-editor/${serviceName}?id=${serviceId}&cmdb=${
+                              row.cmdb_id || ''
+                            }&rowId=${row.id}`;
                           }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                           title="Edit service in PagerDuty"

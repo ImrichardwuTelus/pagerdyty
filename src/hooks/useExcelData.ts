@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { ExcelServiceRow } from '@/types/pagerduty';
 import {
   readExcelFile,
@@ -59,6 +59,13 @@ export function useExcelData(): UseExcelDataReturn {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-load Excel data on mount
+  useEffect(() => {
+    if (data.length === 0 && !loading && !error) {
+      loadLocalExcelFile('mse_trace_analysis_enriched_V2.xlsx');
+    }
+  }, []); // Run only on mount
 
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -134,7 +141,7 @@ export function useExcelData(): UseExcelDataReturn {
     setError(null);
 
     try {
-      const result: ExcelWriteResult = writeExcelFile(data, fileName);
+      const result: ExcelWriteResult = await writeExcelFile(data, fileName);
 
       if (result.success) {
         setOriginalData([...data]);

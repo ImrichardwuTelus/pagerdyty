@@ -41,82 +41,37 @@ export interface ExcelWriteResult {
 }
 
 /**
- * Reads data from a local Excel file in the src directory
+ * Reads data from a local Excel file using the server API
  */
 export async function readLocalExcelFile(fileName: string): Promise<ExcelReadResult> {
   try {
-    const response = await fetch(`/${fileName}`);
+    const response = await fetch('/api/excel');
     if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.statusText}`);
+      throw new Error(`Failed to fetch Excel data: ${response.statusText}`);
     }
 
-    const arrayBuffer = await response.arrayBuffer();
-    const data = new Uint8Array(arrayBuffer);
-    const workbook = XLSX.read(data, { type: 'array' });
+    const result = await response.json();
 
-    // Get the first worksheet
-    const worksheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[worksheetName];
-
-    // Convert to JSON
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-    if (jsonData.length === 0) {
+    if (!result.success) {
       return {
         data: [],
         success: false,
-        error: 'Excel file is empty',
+        error: result.error || 'Failed to read Excel file',
         totalRows: 0
       };
     }
 
-    // Get headers from first row
-    const headers = jsonData[0] as string[];
-    const dataRows = jsonData.slice(1) as any[][];
-
-    // Map headers to our column keys
-    const headerMapping = createHeaderMapping(headers);
-
-    // Convert rows to ExcelServiceRow objects
-    const excelData: ExcelServiceRow[] = dataRows
-      .filter(row => row.some(cell => cell !== undefined && cell !== ''))
-      .map((row, index) => {
-        const rowData: Partial<ExcelServiceRow> = {
-          id: generateRowId(row, index),
-          lastUpdated: new Date().toISOString(),
-        };
-
-        // Map each cell to the appropriate field
-        headers.forEach((header, colIndex) => {
-          const fieldKey = headerMapping[header];
-          if (fieldKey && colIndex < row.length) {
-            const cellValue = row[colIndex];
-            if (cellValue !== undefined && cellValue !== '') {
-              (rowData as any)[fieldKey] = String(cellValue).trim();
-            }
-          }
-        });
-
-        // Calculate completion percentage
-        const completedFields = EXCEL_COLUMNS.filter(col =>
-          rowData[col.key] && String(rowData[col.key]).trim() !== ''
-        ).length;
-        rowData.completion = Math.round((completedFields / EXCEL_COLUMNS.length) * 100);
-
-        return rowData as ExcelServiceRow;
-      });
-
     return {
-      data: excelData,
+      data: result.data,
       success: true,
-      totalRows: excelData.length
+      totalRows: result.totalRows
     };
 
   } catch (error) {
     return {
       data: [],
       success: false,
-      error: `Failed to read local Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Failed to read Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`,
       totalRows: 0
     };
   }
@@ -226,9 +181,47 @@ export function readExcelFile(file: File): Promise<ExcelReadResult> {
 }
 
 /**
- * Writes data to an Excel file and downloads it
+ * Writes data to the Excel file on the server
  */
-export function writeExcelFile(data: ExcelServiceRow[], fileName: string = 'service_data.xlsx'): ExcelWriteResult {
+export async function writeExcelFile(data: ExcelServiceRow[], fileName: string = 'service_data.xlsx'): Promise<ExcelWriteResult> {
+  try {
+    const response = await fetch('/api/excel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ data }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to write Excel file: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || 'Failed to write Excel file'
+      };
+    }
+
+    return {
+      success: true,
+      fileName: fileName
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to write Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
+/**
+ * Writes data to an Excel file and downloads it (legacy function)
+ */
+export function downloadExcelFile(data: ExcelServiceRow[], fileName: string = 'service_data.xlsx'): ExcelWriteResult {
   try {
     // Create workbook
     const workbook = XLSX.utils.book_new();
