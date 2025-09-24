@@ -32,6 +32,8 @@ export default function ServiceEditor() {
   const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
   const [selectedTechService, setSelectedTechService] = useState<string>('');
   const [allServices, setAllServices] = useState<Service[]>([]);
+  const [populateTeamName, setPopulateTeamName] = useState<boolean>(true);
+  const [populateTechSvc, setPopulateTechSvc] = useState<boolean>(true);
 
   // Fetch PagerDuty data with fallback to mock data
   useEffect(() => {
@@ -159,6 +161,7 @@ export default function ServiceEditor() {
   const handleSaveChanges = async () => {
     if (!service) return;
 
+
     setSaving(true);
     try {
       // Prepare data for API call
@@ -207,9 +210,8 @@ export default function ServiceEditor() {
             type: 'UPDATE_EXCEL_ROW',
             rowId: rowId,
             updates: {
-              // Only update team_name if we have a selected team
-              ...(selectedTeamData?.name ? { team_name: selectedTeamData.name } : {}),
-              owned_team: selectedTeamData?.name || '',
+              // Only update team_name if the option is selected and we have a selected team
+              ...(populateTeamName && selectedTeamData?.name ? { team_name: selectedTeamData.name } : {}),
               // Only update prime_manager if we have a selected manager
               ...(primeManagerData?.name ? { prime_manager: primeManagerData.name } : {}),
               confirmed: serviceConfirmed ? 'Yes' : 'No',
@@ -218,8 +220,13 @@ export default function ServiceEditor() {
               ...(selectedTechServiceData ? {
                 'tech-svc': selectedTechServiceData.name,
                 'service id': selectedTechServiceData.id,
-                'owned team': selectedTechServiceData.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams[0].name : ''
               } : {}),
+              // owned_team field: prioritize tech service team, fallback to PagerDuty Teams selection if populateTechSvc is checked
+              ...(selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0
+                ? { owned_team: selectedTechServiceData.teams[0].summary }
+                : populateTechSvc && selectedTeamData?.name
+                ? { owned_team: selectedTeamData.name }
+                : {}),
             }
           };
 
@@ -251,14 +258,13 @@ export default function ServiceEditor() {
       const successMessage = `Service data ${isRealService ? 'updated' : 'prepared for update'} successfully!
 
 Changes Applied:
-- Team Name: ${selectedTeamData?.name || 'None'}
+- Team Name: ${populateTeamName && selectedTeamData?.name ? selectedTeamData.name : 'Not selected for update'}
+- Tech-Svc: ${populateTechSvc && selectedTeamData?.name ? selectedTeamData.name : 'Not selected for update'}
 - Prime Manager: ${primeManagerData?.name || 'None'}
-- Tech-SVC: ${selectedTechServiceData?.name || 'None'}
 - Service ID: ${selectedTechServiceData?.id || 'None'}
-- Owned Team: ${selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams[0].name : 'None'}
 - Confirmed: ${serviceConfirmed ? 'Yes' : 'No'}
 - CMDB ID: ${cmdbId || 'N/A'}
-${rowId ? '- Excel data updated' : ''}`;
+${rowId ? '- Excel data updated based on selected options' : ''}`;
 
       alert(successMessage);
 
@@ -331,11 +337,37 @@ ${rowId ? '- Excel data updated' : ''}`;
           </div>
         </div>
 
-        {/* Teams API */}
+        {/* PagerDuty Teams */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
-            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Teams API</h2>
-            <p className="text-lg text-gray-500 mb-10">Browse and filter teams from PagerDuty API</p>
+            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">PagerDuty Teams</h2>
+            <p className="text-lg text-gray-500 mb-6">Browse and filter teams from PagerDuty API</p>
+
+            {/* Population Options */}
+            <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 mb-8">
+              <h3 className="text-lg font-semibold text-blue-900 mb-4">Data Population Options</h3>
+              <p className="text-sm text-blue-700 mb-4">Choose which fields to populate with the selected team data:</p>
+              <div className="flex flex-wrap gap-6">
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={populateTeamName}
+                    onChange={(e) => setPopulateTeamName(e.target.checked)}
+                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-base font-medium text-blue-900">Populate Team Name</span>
+                </label>
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={populateTechSvc}
+                    onChange={(e) => setPopulateTechSvc(e.target.checked)}
+                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-base font-medium text-blue-900">Populate Tech-Svc</span>
+                </label>
+              </div>
+            </div>
 
             <div className="space-y-6">
               <div>
@@ -388,10 +420,10 @@ ${rowId ? '- Excel data updated' : ''}`;
           </div>
         </div>
 
-        {/* Users API */}
+        {/* PagerDuty Users */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
-            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Users API</h2>
+            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">PagerDuty Users</h2>
             <p className="text-lg text-gray-500 mb-10">Browse and filter users from PagerDuty API to select Prime Manager</p>
 
             <div className="space-y-6">
@@ -451,6 +483,103 @@ ${rowId ? '- Excel data updated' : ''}`;
           </div>
         </div>
 
+
+        {/* PagerDuty Services */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
+          <div className="px-12 py-8">
+            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">PagerDuty Services</h2>
+            <p className="text-lg text-gray-500 mb-10">Browse and select services from PagerDuty API for tech-svc mapping</p>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-base font-medium text-gray-900 mb-4">
+                  Filter Services ({allServices.length} services available)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search services by name, ID, or team..."
+                  value={serviceSearchQuery}
+                  onChange={(e) => setServiceSearchQuery(e.target.value)}
+                  className="w-full px-6 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                />
+              </div>
+
+              <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                {allServices
+                  .filter(svc =>
+                    !serviceSearchQuery ||
+                    svc.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                    svc.id.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                    svc.teams?.some(team => team.summary?.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
+                  )
+                  .map((svc) => (
+                    <label key={svc.id} className="flex items-center space-x-4 p-4 hover:bg-white rounded-xl border border-gray-200 cursor-pointer transition-all duration-200">
+                      <input
+                        type="radio"
+                        name="techService"
+                        value={svc.id}
+                        checked={selectedTechService === svc.id}
+                        onChange={(e) => setSelectedTechService(e.target.value)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <div className="flex-1">
+                        <div className="text-lg font-medium text-gray-900">{svc.name}</div>
+                        <div className="text-base text-gray-500">Service ID: {svc.id}</div>
+                        <div className="text-sm text-gray-600">
+                          Owned Team: {svc.teams && svc.teams.length > 0 ? svc.teams[0].summary : 'No team assigned'}
+                        </div>
+                        {svc.summary && svc.summary !== svc.name && (
+                          <div className="text-sm text-gray-600">Summary: {svc.summary}</div>
+                        )}
+                        <div className="text-xs text-gray-500">
+                          Status: {svc.status} | Alert Creation: {svc.alert_creation}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                {serviceSearchQuery && allServices.filter(svc =>
+                  svc.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                  svc.id.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                  svc.teams?.some(team => team.summary?.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
+                ).length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No services found matching "{serviceSearchQuery}"
+                  </div>
+                )}
+              </div>
+
+              {selectedTechService && (
+                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
+                  <h4 className="text-lg font-semibold text-blue-900 mb-4">Selected Tech Service</h4>
+                  {(() => {
+                    const selectedService = allServices.find(svc => svc.id === selectedTechService);
+                    if (!selectedService) return null;
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">Tech-SVC</label>
+                          <div className="text-base font-medium text-blue-800">{selectedService.name}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">Service ID</label>
+                          <div className="text-base font-medium text-blue-800">{selectedService.id}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">Owned Team</label>
+                          <div className="text-base font-medium text-blue-800">
+                            {selectedService.teams && selectedService.teams.length > 0 ? selectedService.teams[0].summary : 'No team assigned'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+
         {/* Service Confirmation */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
@@ -502,102 +631,6 @@ ${rowId ? '- Excel data updated' : ''}`;
             </div>
           </div>
         </div>
-
-        {/* Service API Section */}
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
-          <div className="px-12 py-8">
-            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Service API</h2>
-            <p className="text-lg text-gray-500 mb-10">Browse and select services from PagerDuty API for tech-svc mapping</p>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">
-                  Filter Services ({allServices.length} services available)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search services by name, ID, or team..."
-                  value={serviceSearchQuery}
-                  onChange={(e) => setServiceSearchQuery(e.target.value)}
-                  className="w-full px-6 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                />
-              </div>
-
-              <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
-                {allServices
-                  .filter(svc =>
-                    !serviceSearchQuery ||
-                    svc.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
-                    svc.id.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
-                    svc.teams?.some(team => team.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
-                  )
-                  .map((svc) => (
-                    <label key={svc.id} className="flex items-center space-x-4 p-4 hover:bg-white rounded-xl border border-gray-200 cursor-pointer transition-all duration-200">
-                      <input
-                        type="radio"
-                        name="techService"
-                        value={svc.id}
-                        checked={selectedTechService === svc.id}
-                        onChange={(e) => setSelectedTechService(e.target.value)}
-                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <div className="flex-1">
-                        <div className="text-lg font-medium text-gray-900">{svc.name}</div>
-                        <div className="text-base text-gray-500">Service ID: {svc.id}</div>
-                        <div className="text-sm text-gray-600">
-                          Owned Team: {svc.teams && svc.teams.length > 0 ? svc.teams[0].name : 'No team assigned'}
-                        </div>
-                        {svc.summary && svc.summary !== svc.name && (
-                          <div className="text-sm text-gray-600">Summary: {svc.summary}</div>
-                        )}
-                        <div className="text-xs text-gray-500">
-                          Status: {svc.status} | Alert Creation: {svc.alert_creation}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                {serviceSearchQuery && allServices.filter(svc =>
-                  svc.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
-                  svc.id.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
-                  svc.teams?.some(team => team.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
-                ).length === 0 && (
-                  <div className="text-center text-gray-500 py-8">
-                    No services found matching "{serviceSearchQuery}"
-                  </div>
-                )}
-              </div>
-
-              {selectedTechService && (
-                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
-                  <h4 className="text-lg font-semibold text-blue-900 mb-4">Selected Tech Service</h4>
-                  {(() => {
-                    const selectedService = allServices.find(svc => svc.id === selectedTechService);
-                    if (!selectedService) return null;
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-blue-900 mb-2">Tech-SVC</label>
-                          <div className="text-base font-medium text-blue-800">{selectedService.name}</div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-blue-900 mb-2">Service ID</label>
-                          <div className="text-base font-medium text-blue-800">{selectedService.id}</div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-blue-900 mb-2">Owned Team</label>
-                          <div className="text-base font-medium text-blue-800">
-                            {selectedService.teams && selectedService.teams.length > 0 ? selectedService.teams[0].name : 'No team assigned'}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
 
         {/* Actions */}
         <div className="flex justify-end space-x-6">
