@@ -53,8 +53,6 @@ export async function GET() {
     const headers = rawData[0] as string[];
     const dataRows = rawData.slice(1) as any[][];
 
-    console.log('Excel headers found:', headers);
-    console.log('First data row sample:', dataRows[0]);
 
     // Create header mapping
     const headerMapping: Record<string, keyof ExcelServiceRow> = {};
@@ -81,6 +79,11 @@ export async function GET() {
         headerMapping[header] = 'mse';
       } else if (normalizedHeader === 'dynaservicename' || normalizedHeader === 'dyna service name' || cleanHeader === 'dynaservicename' || cleanHeader === 'dyna_service_name') {
         headerMapping[header] = 'dyna_service_name';
+      // Add fallback patterns for dynatrace columns
+      } else if (normalizedHeader.includes('dyna') && normalizedHeader.includes('service')) {
+        headerMapping[header] = 'dyna_service_name';
+      } else if (normalizedHeader.includes('dynatrace')) {
+        headerMapping[header] = 'dyna_service_name';
       } else if (normalizedHeader === 'next_hop_process_group' || cleanHeader === 'next_hop_process_group') {
         headerMapping[header] = 'next_hop_process_group';
       } else if (normalizedHeader === 'analysis_status' || cleanHeader === 'analysis_status') {
@@ -100,7 +103,6 @@ export async function GET() {
       }
     });
 
-    console.log('Header mapping created:', headerMapping);
 
     // Convert to ExcelServiceRow format
     const processedData: ExcelServiceRow[] = dataRows
@@ -115,13 +117,22 @@ export async function GET() {
         // Map each cell to the appropriate field
         headers.forEach((header, cellIndex) => {
           const fieldKey = headerMapping[header];
-          if (fieldKey && cellIndex < row.length) {
-            const cellValue = row[cellIndex];
-            if (cellValue != null && cellValue !== '') {
-              serviceRow[fieldKey] = String(cellValue).trim();
+          if (fieldKey) {
+            if (cellIndex < row.length) {
+              const cellValue = row[cellIndex];
+              if (cellValue != null && cellValue !== '') {
+                serviceRow[fieldKey] = String(cellValue).trim();
+              } else {
+                // Explicitly set empty values to empty string instead of undefined
+                serviceRow[fieldKey] = '';
+              }
+            } else {
+              // If cell doesn't exist in row, set to empty string
+              serviceRow[fieldKey] = '';
             }
           }
         });
+
 
         // Calculate completion
         const totalFields = EXCEL_COLUMNS.length;

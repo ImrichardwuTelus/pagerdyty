@@ -42,18 +42,7 @@ export default function ServiceManagementDashboard() {
     getOverallProgress,
   } = useExcelData();
 
-  // Listen for focus events to refresh data when returning from service editor
-  useEffect(() => {
-    const handleFocus = () => {
-      // Reload data when window regains focus (user returns from service editor)
-      if (data.length > 0) {
-        loadLocalExcelFile('mse_trace_analysis_enriched_V2.xlsx');
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [data.length, loadLocalExcelFile]);
+  // Removed focus event listener that was causing random reloads
 
   // UI State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
@@ -812,7 +801,7 @@ export default function ServiceManagementDashboard() {
                         <div className="px-2 py-1 min-h-[32px] flex items-center">
                           {(() => {
                             const dynaValue = row.dyna_service_name;
-                            const hasValue = dynaValue && String(dynaValue).trim() !== '' && String(dynaValue).trim() !== 'undefined' && String(dynaValue).trim() !== 'null';
+                            const hasValue = dynaValue && String(dynaValue).trim() !== '';
                             return hasValue ? (
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
                                 Yes

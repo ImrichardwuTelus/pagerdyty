@@ -438,7 +438,9 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'prime_vp';
     } else if (normalizedHeader === 'mse' || normalizedHeader.includes('mse')) {
       mapping[header] = 'mse';
-    } else if (normalizedHeader.includes('dyna') || normalizedHeader.includes('dynatrace')) {
+    } else if (normalizedHeader.includes('dyna') && normalizedHeader.includes('service')) {
+      mapping[header] = 'dyna_service_name';
+    } else if (normalizedHeader.includes('dynatrace')) {
       mapping[header] = 'dyna_service_name';
     } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('process')) {
       mapping[header] = 'next_hop_process_group';
