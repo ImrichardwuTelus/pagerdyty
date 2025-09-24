@@ -18,7 +18,6 @@ export default function ServiceEditor() {
   const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<string>('');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [primeManager, setPrimeManager] = useState<string>('');
   const [serviceConfirmed, setServiceConfirmed] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -30,6 +29,9 @@ export default function ServiceEditor() {
   const [excelData, setExcelData] = useState<ExcelServiceRow[]>([]);
   const [teamSearchQuery, setTeamSearchQuery] = useState<string>('');
   const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+  const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
+  const [selectedTechService, setSelectedTechService] = useState<string>('');
+  const [allServices, setAllServices] = useState<Service[]>([]);
 
   // Fetch PagerDuty data with fallback to mock data
   useEffect(() => {
@@ -43,11 +45,13 @@ export default function ServiceEditor() {
           const client = getPagerDutyClient();
 
           // Fetch teams, users, and all services from PagerDuty API
-          const [teamsData, usersData, allServices] = await Promise.all([
+          const [teamsData, usersData, servicesData] = await Promise.all([
             client.getAllTeams(),
             client.getAllUsers(),
             client.getAllServices()
           ]);
+
+          setAllServices(servicesData);
 
           // Try to find service by ID or by name
           let serviceData = null;
@@ -64,7 +68,7 @@ export default function ServiceEditor() {
 
           // If not found by ID, try to find by name in the fetched services
           if (!serviceData && serviceName) {
-            const matchingService = allServices.find(service =>
+            const matchingService = servicesData.find(service =>
               service.name.toLowerCase() === serviceName.toLowerCase()
             );
             if (matchingService) {
@@ -80,12 +84,11 @@ export default function ServiceEditor() {
             setIsRealService(true);
             setSelectedTeam(serviceData.teams[0]?.id || '');
 
-            // Find users who are on the same teams as this service
+            // Find users who are on the same teams as this service for prime manager detection
             const serviceTeamIds = serviceData.teams?.map(team => team.id) || [];
             const serviceUsers = usersData.filter(user =>
               user.teams?.some(userTeam => serviceTeamIds.includes(userTeam.id))
             );
-            setSelectedUsers(serviceUsers.map(user => user.id));
 
             // Try to find a manager role as prime manager
             const manager = serviceUsers.find(user =>
@@ -160,7 +163,6 @@ export default function ServiceEditor() {
     try {
       // Prepare data for API call
       const selectedTeamData = availableTeams.find(team => team.id === selectedTeam);
-      const selectedUserData = availableUsers.filter(user => selectedUsers.includes(user.id));
       const primeManagerData = availableUsers.find(user => user.id === primeManager);
 
       const client = getPagerDutyClient();
@@ -197,19 +199,27 @@ export default function ServiceEditor() {
       // Update Excel data if we have a row ID
       if (rowId && typeof window !== 'undefined') {
         try {
+          // Get selected tech service data
+          const selectedTechServiceData = allServices.find(svc => svc.id === selectedTechService);
+
           // Post message to parent window to update Excel data
           const updateData = {
             type: 'UPDATE_EXCEL_ROW',
             rowId: rowId,
             updates: {
-              service_id: updatedService.id,
-              team_name: selectedTeamData?.name || '',
+              // Only update team_name if we have a selected team
+              ...(selectedTeamData?.name ? { team_name: selectedTeamData.name } : {}),
               owned_team: selectedTeamData?.name || '',
-              prime_manager: primeManagerData?.name || '',
+              // Only update prime_manager if we have a selected manager
+              ...(primeManagerData?.name ? { prime_manager: primeManagerData.name } : {}),
               confirmed: serviceConfirmed ? 'Yes' : 'No',
-              service_name_mp: updatedService.name,
               enrichment_status: 'PagerDuty Integrated',
-              analysis_status: updatedService.status,
+              // Tech service fields
+              ...(selectedTechServiceData ? {
+                'tech-svc': selectedTechServiceData.name,
+                'service id': selectedTechServiceData.id,
+                'owned team': selectedTechServiceData.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams[0].name : ''
+              } : {}),
             }
           };
 
@@ -237,16 +247,18 @@ export default function ServiceEditor() {
       }
 
       // Show success message with actual data
-      const successMessage = `Service "${updatedService.name}" ${isRealService ? 'updated' : 'prepared for update'} successfully!
+      const selectedTechServiceData = allServices.find(svc => svc.id === selectedTechService);
+      const successMessage = `Service data ${isRealService ? 'updated' : 'prepared for update'} successfully!
 
 Changes Applied:
-- Service ID: ${updatedService.id}
-- Team: ${selectedTeamData?.name || 'None'}
+- Team Name: ${selectedTeamData?.name || 'None'}
 - Prime Manager: ${primeManagerData?.name || 'None'}
-- Assigned Users: ${selectedUserData.length}
+- Tech-SVC: ${selectedTechServiceData?.name || 'None'}
+- Service ID: ${selectedTechServiceData?.id || 'None'}
+- Owned Team: ${selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams[0].name : 'None'}
 - Confirmed: ${serviceConfirmed ? 'Yes' : 'No'}
 - CMDB ID: ${cmdbId || 'N/A'}
-${rowId ? '- Excel data updated and downloaded' : ''}`;
+${rowId ? '- Excel data updated' : ''}`;
 
       alert(successMessage);
 
@@ -315,203 +327,125 @@ ${rowId ? '- Excel data updated and downloaded' : ''}`;
                 <p className="text-lg text-gray-500 mt-2">Service ID: {service.id}</p>
                 {cmdbId && <p className="text-lg text-gray-500">CMDB ID: {cmdbId}</p>}
               </div>
-              <div className="flex items-center space-x-4">
-                <span className={`px-6 py-3 text-sm font-medium rounded-full ${
-                  service.status === 'active'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {service.status.charAt(0).toUpperCase() + service.status.slice(1)}
-                </span>
-                <span className={`px-6 py-3 text-sm font-medium rounded-full ${
-                  isRealService
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-orange-100 text-orange-800'
-                }`}>
-                  {isRealService ? 'Existing Service' : 'New Service'}
-                </span>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Team Assignment */}
+        {/* Teams API */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
-            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Team Assignment</h2>
-            <p className="text-lg text-gray-500 mb-10">Assign this service to a PagerDuty team</p>
+            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Teams API</h2>
+            <p className="text-lg text-gray-500 mb-10">Browse and filter teams from PagerDuty API</p>
 
-            <div className="space-y-8">
+            <div className="space-y-6">
               <div>
                 <label className="block text-base font-medium text-gray-900 mb-4">
-                  Current Owned Team {isRealService && <span className="text-sm text-blue-600">(from PagerDuty)</span>}
+                  Filter Teams ({availableTeams.length} teams available)
                 </label>
-                <div className="text-xl font-medium text-gray-700 bg-gray-50 px-6 py-4 rounded-2xl border border-gray-200">
-                  {service.teams && service.teams.length > 0 ? (
-                    <div>
-                      <span className="font-semibold">{service.teams[0].name}</span>
-                      <span className="text-base text-gray-500 ml-2">({service.teams[0].id})</span>
-                      {service.teams.length > 1 && (
-                        <span className="text-sm text-gray-500 block mt-1">
-                          +{service.teams.length - 1} more team{service.teams.length > 2 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    'No team assigned'
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="team-select" className="block text-base font-medium text-gray-900 mb-4">
-                  Select New Team ({availableTeams.length} teams available)
-                </label>
-
                 <input
                   type="text"
-                  placeholder="Search teams..."
+                  placeholder="Search teams by name or description..."
                   value={teamSearchQuery}
                   onChange={(e) => setTeamSearchQuery(e.target.value)}
-                  className="w-full px-6 py-3 mb-4 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  className="w-full px-6 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
+              </div>
 
-                <select
-                  id="team-select"
-                  value={selectedTeam}
-                  onChange={(e) => setSelectedTeam(e.target.value)}
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                >
-                  <option value="">Select a team...</option>
-                  {availableTeams
-                    .filter(team =>
-                      !teamSearchQuery ||
-                      team.name.toLowerCase().includes(teamSearchQuery.toLowerCase()) ||
-                      team.summary?.toLowerCase().includes(teamSearchQuery.toLowerCase())
-                    )
-                    .map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name} - {team.summary}
-                      </option>
-                    ))}
-                </select>
+              <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                {availableTeams
+                  .filter(team =>
+                    !teamSearchQuery ||
+                    team.name.toLowerCase().includes(teamSearchQuery.toLowerCase()) ||
+                    team.summary?.toLowerCase().includes(teamSearchQuery.toLowerCase())
+                  )
+                  .map((team) => (
+                    <label key={team.id} className="flex items-center space-x-4 p-4 hover:bg-white rounded-xl border border-gray-200 cursor-pointer transition-all duration-200">
+                      <input
+                        type="radio"
+                        name="selectedTeam"
+                        value={team.id}
+                        checked={selectedTeam === team.id}
+                        onChange={(e) => setSelectedTeam(e.target.value)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <div className="flex-1">
+                        <div className="text-lg font-medium text-gray-900">{team.name}</div>
+                        <div className="text-base text-gray-500">ID: {team.id}</div>
+                        {team.summary && <div className="text-sm text-gray-600">{team.summary}</div>}
+                      </div>
+                    </label>
+                  ))}
+                {teamSearchQuery && availableTeams.filter(team =>
+                  team.name.toLowerCase().includes(teamSearchQuery.toLowerCase()) ||
+                  team.summary?.toLowerCase().includes(teamSearchQuery.toLowerCase())
+                ).length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No teams found matching "{teamSearchQuery}"
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* User Management */}
+        {/* Users API */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
-            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">User Management</h2>
-            <p className="text-lg text-gray-500 mb-10">Assign users and set prime manager for this service</p>
+            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Users API</h2>
+            <p className="text-lg text-gray-500 mb-10">Browse and filter users from PagerDuty API to select Prime Manager</p>
 
-            <div className="space-y-10">
+            <div className="space-y-6">
               <div>
                 <label className="block text-base font-medium text-gray-900 mb-4">
-                  Current Team Users {isRealService && <span className="text-sm text-blue-600">(from team assignment)</span>}
+                  Filter Users ({availableUsers.length} users available)
                 </label>
-                <div className="space-y-3">
-                  {service?.teams && service.teams.length > 0 ? (
-                    availableUsers
-                      .filter(user =>
-                        user.teams?.some(userTeam =>
-                          service.teams?.some(serviceTeam => serviceTeam.id === userTeam.id)
-                        )
-                      )
-                      .map((user) => (
-                        <div key={user.id} className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                          <div>
-                            <div className="text-xl font-medium text-gray-900">{user.name}</div>
-                            <div className="text-base text-gray-500 mt-1">
-                              {user.email} • {user.role}
-                              {user.job_title && ` • ${user.job_title}`}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                  ) : (
-                    <div className="text-xl font-medium text-gray-500 bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                      No team users found
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="prime-manager-select" className="block text-base font-medium text-gray-900 mb-4">
-                  Prime Manager
-                </label>
-                <select
-                  id="prime-manager-select"
-                  value={primeManager}
-                  onChange={(e) => setPrimeManager(e.target.value)}
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                >
-                  <option value="">Select prime manager...</option>
-                  {availableUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} - {user.job_title || user.role} ({user.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">
-                  Additional Assigned Users ({availableUsers.length} users available)
-                </label>
-
                 <input
                   type="text"
-                  placeholder="Search users by name, email, or role..."
+                  placeholder="Search users by name, email, role, or job title..."
                   value={userSearchQuery}
                   onChange={(e) => setUserSearchQuery(e.target.value)}
-                  className="w-full px-6 py-3 mb-4 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  className="w-full px-6 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
+              </div>
 
-                <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
-                  {availableUsers
-                    .filter(user =>
-                      !userSearchQuery ||
-                      user.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                      user.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                      user.role?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                      user.job_title?.toLowerCase().includes(userSearchQuery.toLowerCase())
-                    )
-                    .map((user) => (
-                      <label key={user.id} className="flex items-center space-x-4 p-4 hover:bg-white rounded-xl border border-gray-200 cursor-pointer transition-all duration-200">
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.includes(user.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedUsers([...selectedUsers, user.id]);
-                            } else {
-                              setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                            }
-                          }}
-                          className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <div className="flex-1">
-                          <div className="text-lg font-medium text-gray-900">{user.name}</div>
-                          <div className="text-base text-gray-500">
-                            {user.email} • {user.job_title || user.role}
-                          </div>
-                        </div>
-                      </label>
-                    ))}
-                  {userSearchQuery && availableUsers.filter(user =>
+              <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                {availableUsers
+                  .filter(user =>
+                    !userSearchQuery ||
                     user.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
                     user.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
                     user.role?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
                     user.job_title?.toLowerCase().includes(userSearchQuery.toLowerCase())
-                  ).length === 0 && (
-                    <div className="text-center text-gray-500 py-8">
-                      No users found matching "{userSearchQuery}"
-                    </div>
-                  )}
-                </div>
+                  )
+                  .map((user) => (
+                    <label key={user.id} className="flex items-center space-x-4 p-4 hover:bg-white rounded-xl border border-gray-200 cursor-pointer transition-all duration-200">
+                      <input
+                        type="radio"
+                        name="primeManager"
+                        value={user.id}
+                        checked={primeManager === user.id}
+                        onChange={(e) => setPrimeManager(e.target.value)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <div className="flex-1">
+                        <div className="text-lg font-medium text-gray-900">{user.name}</div>
+                        <div className="text-base text-gray-500">
+                          {user.email} • {user.job_title || user.role}
+                        </div>
+                        <div className="text-sm text-gray-600">ID: {user.id}</div>
+                      </div>
+                    </label>
+                  ))}
+                {userSearchQuery && availableUsers.filter(user =>
+                  user.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  user.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  user.role?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  user.job_title?.toLowerCase().includes(userSearchQuery.toLowerCase())
+                ).length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No users found matching "{userSearchQuery}"
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -569,70 +503,101 @@ ${rowId ? '- Excel data updated and downloaded' : ''}`;
           </div>
         </div>
 
-        {/* Service Details */}
+        {/* Service API Section */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
-            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Service Information</h2>
-            <p className="text-lg text-gray-500 mb-10">View and manage service details</p>
+            <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Service API</h2>
+            <p className="text-lg text-gray-500 mb-10">Browse and select services from PagerDuty API for tech-svc mapping</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
               <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">Service Name</label>
+                <label className="block text-base font-medium text-gray-900 mb-4">
+                  Filter Services ({allServices.length} services available)
+                </label>
                 <input
                   type="text"
-                  value={service.name}
-                  onChange={(e) => setService({...service, name: e.target.value})}
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  placeholder="Search services by name, ID, or team..."
+                  value={serviceSearchQuery}
+                  onChange={(e) => setServiceSearchQuery(e.target.value)}
+                  className="w-full px-6 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 />
               </div>
-              <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">Service ID</label>
-                <input
-                  type="text"
-                  value={service.id}
-                  disabled
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-2xl"
-                />
+
+              <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                {allServices
+                  .filter(svc =>
+                    !serviceSearchQuery ||
+                    svc.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                    svc.id.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                    svc.teams?.some(team => team.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
+                  )
+                  .map((svc) => (
+                    <label key={svc.id} className="flex items-center space-x-4 p-4 hover:bg-white rounded-xl border border-gray-200 cursor-pointer transition-all duration-200">
+                      <input
+                        type="radio"
+                        name="techService"
+                        value={svc.id}
+                        checked={selectedTechService === svc.id}
+                        onChange={(e) => setSelectedTechService(e.target.value)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <div className="flex-1">
+                        <div className="text-lg font-medium text-gray-900">{svc.name}</div>
+                        <div className="text-base text-gray-500">Service ID: {svc.id}</div>
+                        <div className="text-sm text-gray-600">
+                          Owned Team: {svc.teams && svc.teams.length > 0 ? svc.teams[0].name : 'No team assigned'}
+                        </div>
+                        {svc.summary && svc.summary !== svc.name && (
+                          <div className="text-sm text-gray-600">Summary: {svc.summary}</div>
+                        )}
+                        <div className="text-xs text-gray-500">
+                          Status: {svc.status} | Alert Creation: {svc.alert_creation}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                {serviceSearchQuery && allServices.filter(svc =>
+                  svc.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                  svc.id.toLowerCase().includes(serviceSearchQuery.toLowerCase()) ||
+                  svc.teams?.some(team => team.name.toLowerCase().includes(serviceSearchQuery.toLowerCase()))
+                ).length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    No services found matching "{serviceSearchQuery}"
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">CMDB ID</label>
-                <input
-                  type="text"
-                  value={cmdbId || ''}
-                  disabled
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-2xl"
-                />
-              </div>
-              <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">Service Status</label>
-                <input
-                  type="text"
-                  value={service.status.charAt(0).toUpperCase() + service.status.slice(1)}
-                  disabled
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-2xl"
-                />
-              </div>
-              <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">Created Date</label>
-                <input
-                  type="text"
-                  value={service.created_at ? new Date(service.created_at).toLocaleDateString() : 'N/A'}
-                  disabled
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-2xl"
-                />
-              </div>
-              <div>
-                <label className="block text-base font-medium text-gray-900 mb-4">Alert Creation</label>
-                <input
-                  type="text"
-                  value={service.alert_creation}
-                  disabled
-                  className="w-full px-6 py-4 text-lg font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-2xl"
-                />
-              </div>
+
+              {selectedTechService && (
+                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
+                  <h4 className="text-lg font-semibold text-blue-900 mb-4">Selected Tech Service</h4>
+                  {(() => {
+                    const selectedService = allServices.find(svc => svc.id === selectedTechService);
+                    if (!selectedService) return null;
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">Tech-SVC</label>
+                          <div className="text-base font-medium text-blue-800">{selectedService.name}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">Service ID</label>
+                          <div className="text-base font-medium text-blue-800">{selectedService.id}</div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">Owned Team</label>
+                          <div className="text-base font-medium text-blue-800">
+                            {selectedService.teams && selectedService.teams.length > 0 ? selectedService.teams[0].name : 'No team assigned'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         </div>
+
 
         {/* Actions */}
         <div className="flex justify-end space-x-6">
