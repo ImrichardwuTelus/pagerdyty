@@ -409,7 +409,7 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'prime_vp';
     } else if (normalizedHeader === 'mse' || cleanHeader === 'mse') {
       mapping[header] = 'mse';
-    } else if (normalizedHeader === 'dyna_service_name' || cleanHeader === 'dyna_service_name') {
+    } else if (normalizedHeader === 'dyna_service_name' || cleanHeader === 'dyna_service_name' || normalizedHeader === 'dynaservicename' || cleanHeader === 'dynaservicename') {
       mapping[header] = 'dyna_service_name';
     } else if (normalizedHeader === 'next_hop_process_group' || cleanHeader === 'next_hop_process_group') {
       mapping[header] = 'next_hop_process_group';
@@ -445,7 +445,7 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'prime_vp';
     } else if (normalizedHeader === 'mse' || normalizedHeader.includes('mse')) {
       mapping[header] = 'mse';
-    } else if (normalizedHeader.includes('dyna')) {
+    } else if (normalizedHeader.includes('dyna') || normalizedHeader.includes('dynatrace')) {
       mapping[header] = 'dyna_service_name';
     } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('process')) {
       mapping[header] = 'next_hop_process_group';
