@@ -313,16 +313,14 @@ Changes Applied:
 - CMDB ID: ${cmdbId || 'N/A'}
 ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
 
-      alert(successMessage);
+      // Show success message and redirect
+      console.log(successMessage);
 
       // Redirect back to the dashboard after successful save
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 2000);
+      window.location.href = '/';
     } catch (error) {
       console.error('Error updating service:', error);
       setError(error instanceof Error ? error.message : 'Failed to update service');
-      alert('Error updating service. Please try again.');
     } finally {
       setSaving(false);
     }

@@ -236,7 +236,7 @@ export function useExcelData(): UseExcelDataReturn {
     return row ? calculateRowCompletion(row) : 0;
   }, [data]);
 
-  // Get overall progress
+  // Get overall progress based on key fields (same as Service Progress Tracking)
   const getOverallProgress = useCallback(() => {
     if (data.length === 0) {
       return {
@@ -248,11 +248,19 @@ export function useExcelData(): UseExcelDataReturn {
       };
     }
 
-    const completed = data.filter(row => row.completion === 100).length;
-    const notStarted = data.filter(row => row.completion === 0).length;
+    // Calculate completion for key fields only: team_name, owned_team, service_name_mp, cmdb_id
+    const keyFields = ['team_name', 'owned_team', 'service_name_mp', 'cmdb_id'] as const;
+
+    const progressData = data.map(row => {
+      const completedKeyFields = keyFields.filter(field => row[field] && String(row[field]).trim() !== '').length;
+      return Math.round((completedKeyFields / keyFields.length) * 100);
+    });
+
+    const completed = progressData.filter(completion => completion === 100).length;
+    const notStarted = progressData.filter(completion => completion === 0).length;
     const inProgress = data.length - completed - notStarted;
     const averageCompletion = Math.round(
-      data.reduce((sum, row) => sum + row.completion, 0) / data.length
+      progressData.reduce((sum, completion) => sum + completion, 0) / data.length
     );
 
     return {
