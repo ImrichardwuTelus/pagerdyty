@@ -822,25 +822,18 @@ export default function ServiceManagementDashboard() {
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                        <div className="px-2 py-1 min-h-[32px] flex items-center space-x-2">
+                        <div className="px-2 py-1 min-h-[32px] flex items-center">
                           {(() => {
                             const dynaValue = row.dyna_service_name;
                             const hasValue = dynaValue && String(dynaValue).trim() !== '' && String(dynaValue).trim() !== 'undefined' && String(dynaValue).trim() !== 'null';
-                            return (
-                              <>
-                                {hasValue ? (
-                                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                                    Yes
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
-                                    No
-                                  </span>
-                                )}
-                                <span className="text-xs text-gray-500">
-                                  ({String(dynaValue || 'empty')})
-                                </span>
-                              </>
+                            return hasValue ? (
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
+                                No
+                              </span>
                             );
                           })()}
                         </div>
