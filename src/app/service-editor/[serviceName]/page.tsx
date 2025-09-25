@@ -32,8 +32,8 @@ export default function ServiceEditor() {
   const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
   const [selectedTechService, setSelectedTechService] = useState<string>('');
   const [allServices, setAllServices] = useState<Service[]>([]);
-  const [populateTeamName, setPopulateTeamName] = useState<boolean>(true);
-  const [populateTechSvc, setPopulateTechSvc] = useState<boolean>(true);
+  const [populateTeamName, setPopulateTeamName] = useState<boolean>(false);
+  const [populateTechSvc, setPopulateTechSvc] = useState<boolean>(false);
   const [serviceScenario, setServiceScenario] = useState<string>('');
 
   // Fetch PagerDuty data with fallback to mock data
@@ -393,7 +393,7 @@ ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
             {/* Population Options */}
             <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 mb-8">
               <h3 className="text-lg font-semibold text-blue-900 mb-4">Data Population Options</h3>
-              <p className="text-sm text-blue-700 mb-4">Choose which fields to populate with the selected team data:</p>
+              <p className="text-sm text-blue-700 mb-4">Choose which fields to select with the selected team data:</p>
               <div className="flex flex-wrap gap-6">
                 <label className="flex items-center space-x-3">
                   <input
@@ -402,7 +402,7 @@ ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
                     onChange={(e) => setPopulateTeamName(e.target.checked)}
                     className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <span className="text-base font-medium text-blue-900">Populate Team Name</span>
+                  <span className="text-base font-medium text-blue-900">Select Team Name</span>
                 </label>
                 <label className="flex items-center space-x-3">
                   <input
@@ -411,7 +411,7 @@ ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
                     onChange={(e) => setPopulateTechSvc(e.target.checked)}
                     className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <span className="text-base font-medium text-blue-900">Populate Tech-Svc</span>
+                  <span className="text-base font-medium text-blue-900">Select Tech-Svc</span>
                 </label>
               </div>
             </div>
