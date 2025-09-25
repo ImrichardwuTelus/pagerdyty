@@ -60,24 +60,6 @@ export default function ServiceManagementDashboard() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-
-  // Scroll on load functionality for large datasets
-  useEffect(() => {
-    if (data.length > 0 && !loading) {
-      // Scroll to data table when data loads, especially useful for large datasets
-      const tableElement = document.getElementById('service-data-table');
-      if (tableElement) {
-        setTimeout(() => {
-          tableElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-            inline: 'nearest'
-          });
-        }, 500); // Small delay to ensure rendering is complete
-      }
-    }
-  }, [data.length, loading]);
-
   // Progress calculations
   const progress = getOverallProgress();
 
@@ -227,7 +209,6 @@ export default function ServiceManagementDashboard() {
     }));
   };
 
-
   const getCompletionColor = (completion: number) => {
     if (completion >= 90) return 'bg-green-500';
     if (completion >= 70) return 'bg-blue-500';
@@ -262,7 +243,6 @@ export default function ServiceManagementDashboard() {
       </div>
     );
   };
-
 
   // Progress Indicator Component
   const ProgressIndicator = ({ completion }: { completion: number }) => (
@@ -366,9 +346,7 @@ export default function ServiceManagementDashboard() {
             {/* Overview Cards */}
             <div className="lg:col-span-2">
               <div className="bg-white shadow-lg rounded-xl border border-gray-200/60 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Knowledge
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Knowledge</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                     <div className="text-2xl font-bold text-blue-700">{progress.total}</div>
@@ -712,57 +690,81 @@ export default function ServiceManagementDashboard() {
           </div>
         )}
 
-
         {/* Excel Data Table */}
         {data.length > 0 && (
-          <div id="service-data-table" className="bg-white shadow-lg rounded-xl border border-gray-200/60 overflow-hidden">
+          <div
+            id="service-data-table"
+            className="bg-white shadow-lg rounded-xl border border-gray-200/60 overflow-hidden"
+          >
             <div className="px-8 py-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Excel Data</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Team Name, Tech-Svc, CMDB ID, Dynatrace Status, Prime Manager, Prime Director, Prime VP
+                Team Name, Tech-Svc, CMDB ID, Dynatrace Status, Prime Manager, Prime Director, Prime
+                VP
               </p>
             </div>
             <div className="overflow-x-auto" style={{ maxHeight: '70vh' }}>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('team_name')}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('team_name')}
+                    >
                       <div className="flex items-center space-x-1">
                         <span>Team Name</span>
                         <SortIcon column={'team_name'} />
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('owned_team')}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('owned_team')}
+                    >
                       <div className="flex items-center space-x-1">
                         <span>Tech-Svc</span>
                         <SortIcon column={'owned_team'} />
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('cmdb_id')}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('cmdb_id')}
+                    >
                       <div className="flex items-center space-x-1">
                         <span>CMDB ID</span>
                         <SortIcon column={'cmdb_id'} />
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dyna_service_name')}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('dyna_service_name')}
+                    >
                       <div className="flex items-center space-x-1">
                         <span>Dynatrace</span>
                         <SortIcon column={'dyna_service_name'} />
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('prime_manager')}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('prime_manager')}
+                    >
                       <div className="flex items-center space-x-1">
                         <span>Prime Manager</span>
                         <SortIcon column={'prime_manager'} />
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('prime_director')}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('prime_director')}
+                    >
                       <div className="flex items-center space-x-1">
                         <span>Prime Director</span>
                         <SortIcon column={'prime_director'} />
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('prime_vp')}>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('prime_vp')}
+                    >
                       <div className="flex items-center space-x-1">
                         <span>Prime VP</span>
                         <SortIcon column={'prime_vp'} />
@@ -792,10 +794,7 @@ export default function ServiceManagementDashboard() {
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                        <DisplayCell
-                          value={row.cmdb_id || ''}
-                          className="text-sm text-gray-900"
-                        />
+                        <DisplayCell value={row.cmdb_id || ''} className="text-sm text-gray-900" />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <div className="px-2 py-1 min-h-[32px] flex items-center">
@@ -827,10 +826,7 @@ export default function ServiceManagementDashboard() {
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                        <DisplayCell
-                          value={row.prime_vp || ''}
-                          className="text-sm text-gray-900"
-                        />
+                        <DisplayCell value={row.prime_vp || ''} className="text-sm text-gray-900" />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <button
@@ -873,11 +869,18 @@ export default function ServiceManagementDashboard() {
               <div className="flex items-center space-x-3">
                 <p className="text-sm font-medium text-gray-800">
                   Showing{' '}
-                  <span className="font-semibold text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                  <span className="font-semibold text-gray-900">
+                    {(currentPage - 1) * itemsPerPage + 1}
+                  </span>{' '}
+                  to{' '}
                   <span className="font-semibold text-gray-900">
                     {Math.min(currentPage * itemsPerPage, filteredAndSortedData.length)}
                   </span>{' '}
-                  of <span className="font-semibold text-gray-900">{filteredAndSortedData.length}</span> results
+                  of{' '}
+                  <span className="font-semibold text-gray-900">
+                    {filteredAndSortedData.length}
+                  </span>{' '}
+                  results
                 </p>
                 <select
                   value={itemsPerPage}
@@ -929,9 +932,18 @@ export default function ServiceManagementDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
                 {filteredAndSortedData.map(row => {
                   // Calculate completion for key fields only: team_name, owned_team, service_name_mp, cmdb_id
-                  const keyFields = ['team_name', 'owned_team', 'service_name_mp', 'cmdb_id'] as const;
-                  const completedKeyFields = keyFields.filter(field => row[field] && String(row[field]).trim() !== '').length;
-                  const keyFieldCompletion = Math.round((completedKeyFields / keyFields.length) * 100);
+                  const keyFields = [
+                    'team_name',
+                    'owned_team',
+                    'service_name_mp',
+                    'cmdb_id',
+                  ] as const;
+                  const completedKeyFields = keyFields.filter(
+                    field => row[field] && String(row[field]).trim() !== ''
+                  ).length;
+                  const keyFieldCompletion = Math.round(
+                    (completedKeyFields / keyFields.length) * 100
+                  );
 
                   return (
                     <div
@@ -976,7 +988,7 @@ export default function ServiceManagementDashboard() {
                       </div>
                       <div className="mt-2 space-y-1">
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">Team:</span>
+                          <span className="text-gray-500">Team Name:</span>
                           <span className={row.team_name ? 'text-green-600' : 'text-red-500'}>
                             {row.team_name ? '✓' : '✗'}
                           </span>
@@ -1007,7 +1019,6 @@ export default function ServiceManagementDashboard() {
             </div>
           </div>
         )}
-
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
