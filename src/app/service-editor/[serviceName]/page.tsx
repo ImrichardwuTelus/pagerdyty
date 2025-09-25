@@ -32,8 +32,7 @@ export default function ServiceEditor() {
   const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
   const [selectedTechService, setSelectedTechService] = useState<string>('');
   const [allServices, setAllServices] = useState<Service[]>([]);
-  const [populateTeamName, setPopulateTeamName] = useState<boolean>(false);
-  const [populateTechSvc, setPopulateTechSvc] = useState<boolean>(false);
+  const [populateTeamName, setPopulateTeamName] = useState<boolean>(true);
   const [serviceScenario, setServiceScenario] = useState<string>('');
   const [currentExcelRow, setCurrentExcelRow] = useState<ExcelServiceRow | null>(null);
 
@@ -245,23 +244,20 @@ export default function ServiceEditor() {
             type: 'UPDATE_EXCEL_ROW',
             rowId: rowId,
             updates: {
-              // Only update team_name if the option is selected and we have a selected team
-              ...(populateTeamName && selectedTeamData?.name ? { team_name: selectedTeamData.name } : {}),
+              // Update team_name if we have a selected team
+              ...(selectedTeamData?.name ? { team_name: selectedTeamData.name } : {}),
               // Only update prime_manager if we have a selected manager
               ...(primeManagerData?.name ? { prime_manager: primeManagerData.name } : {}),
               confirmed: serviceConfirmed ? 'Yes' : 'No',
               enrichment_status: 'PagerDuty Integrated',
-              // Tech service fields - only update if user selected existing or dynatrace scenario
-              ...(selectedTechServiceData && (serviceScenario === 'existing' || serviceScenario === 'dynatrace') ? {
+              // Tech service fields - update if user selected a service
+              ...(selectedTechServiceData ? {
                 'tech-svc': selectedTechServiceData.name,
                 'service id': selectedTechServiceData.id,
-                ...(serviceScenario === 'dynatrace' ? { 'dynatrace_integration': 'Planned' } : {}),
               } : {}),
-              // owned_team field: prioritize tech service team, fallback to PagerDuty Teams selection if populateTechSvc is checked
-              ...(selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 && (serviceScenario === 'existing' || serviceScenario === 'dynatrace')
+              // owned_team field: update from tech service team if available
+              ...(selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0
                 ? { owned_team: selectedTechServiceData.teams[0].summary }
-                : populateTechSvc && selectedTeamData?.name
-                ? { owned_team: selectedTeamData.name }
                 : {}),
             }
           };
@@ -318,34 +314,17 @@ export default function ServiceEditor() {
       // Show success message with actual data
       const selectedTechServiceData = allServices.find(svc => svc.id === selectedTechService);
 
-      let scenarioText = '';
-      switch(serviceScenario) {
-        case 'existing':
-          scenarioText = 'Existing technical service associated';
-          break;
-        case 'dynatrace':
-          scenarioText = 'Service prepared for Dynatrace integration';
-          break;
-        case 'none':
-          scenarioText = 'No technical service changes made';
-          break;
-        default:
-          scenarioText = 'No scenario selected';
-      }
-
       const successMessage = `Service data ${isRealService ? 'updated' : 'prepared for update'} successfully!
 
 Changes Applied:
-- Scenario: ${scenarioText}
-- Team Name: ${populateTeamName && selectedTeamData?.name ? selectedTeamData.name : 'Not selected for update'}
-- Tech-Svc: ${(serviceScenario === 'existing' || serviceScenario === 'dynatrace') && selectedTechServiceData?.name ? selectedTechServiceData.name : 'Not updated'}
-- Owned Team: ${selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 && (serviceScenario === 'existing' || serviceScenario === 'dynatrace') ? selectedTechServiceData.teams[0].summary : populateTechSvc && selectedTeamData?.name ? selectedTeamData.name : 'Not updated'}
+- Team Name: ${selectedTeamData?.name ? selectedTeamData.name : 'Not updated'}
+- Tech-Svc: ${selectedTechServiceData?.name ? selectedTechServiceData.name : 'Not updated'}
+- Owned Team: ${selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams[0].summary : 'Not updated'}
 - Prime Manager: ${primeManagerData?.name || 'None'}
-- Service ID: ${(serviceScenario === 'existing' || serviceScenario === 'dynatrace') && selectedTechServiceData?.id || 'None'}
-- Dynatrace Integration: ${serviceScenario === 'dynatrace' ? 'Planned' : 'Not applicable'}
+- Service ID: ${selectedTechServiceData?.id || 'None'}
 - Confirmed: ${serviceConfirmed ? 'Yes' : 'No'}
 - CMDB ID: ${cmdbId || 'N/A'}
-${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
+${rowId ? '- Excel data updated successfully' : ''}`;
 
       // Show success message and redirect
       console.log(successMessage);
@@ -418,91 +397,12 @@ ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
           </div>
         </div>
 
-        {/* Current Excel Data */}
-        {currentExcelRow && (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
-            <div className="px-12 py-8">
-              <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Current Data</h2>
-              <p className="text-lg text-gray-500 mb-6">Existing information from your Excel data</p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Team Name</h3>
-                  <p className="text-base text-blue-800">
-                    {currentExcelRow.team_name || "there isn't any"}
-                  </p>
-                </div>
-
-                <div className="bg-green-50 p-6 rounded-2xl border border-green-200">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">Prime Manager</h3>
-                  <p className="text-base text-green-800">
-                    {currentExcelRow.prime_manager || "there isn't any"}
-                  </p>
-                </div>
-
-                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-200">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-2">Tech-Svc</h3>
-                  <p className="text-base text-purple-800">
-                    {currentExcelRow['tech-svc'] || currentExcelRow.owned_team || "there isn't any"}
-                  </p>
-                </div>
-
-                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-200">
-                  <h3 className="text-lg font-semibold text-orange-900 mb-2">Service ID</h3>
-                  <p className="text-base text-orange-800">
-                    {currentExcelRow['service id'] || "there isn't any"}
-                  </p>
-                </div>
-
-                <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-200">
-                  <h3 className="text-lg font-semibold text-yellow-900 mb-2">Confirmation Status</h3>
-                  <p className="text-base text-yellow-800">
-                    {currentExcelRow.confirmed || "there isn't any"}
-                  </p>
-                </div>
-
-                <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-200">
-                  <h3 className="text-lg font-semibold text-indigo-900 mb-2">Enrichment Status</h3>
-                  <p className="text-base text-indigo-800">
-                    {currentExcelRow.enrichment_status || "there isn't any"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* PagerDuty Teams */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
             <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">PagerDuty Teams</h2>
-            <p className="text-lg text-gray-500 mb-6">Browse and filter teams from PagerDuty API</p>
-
-            {/* Population Options */}
-            <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 mb-8">
-              <h3 className="text-lg font-semibold text-blue-900 mb-4">Data Population Options</h3>
-              <p className="text-sm text-blue-700 mb-4">Choose which fields to select with the selected team data:</p>
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={populateTeamName}
-                    onChange={(e) => setPopulateTeamName(e.target.checked)}
-                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="text-base font-medium text-blue-900">Select Team Name</span>
-                </label>
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={populateTechSvc}
-                    onChange={(e) => setPopulateTechSvc(e.target.checked)}
-                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="text-base font-medium text-blue-900">Select Tech-Svc</span>
-                </label>
-              </div>
-            </div>
+            <p className="text-lg text-gray-500 mb-6">Browse and filter teams from PagerDuty API - this will edit the Excel team name field</p>
 
             <div className="space-y-6">
               <div>
@@ -623,104 +523,21 @@ ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
           <div className="px-12 py-8">
             <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">PagerDuty Services</h2>
-            <p className="text-lg text-gray-500 mb-8">Choose your technical service scenario and integrate with Dynatrace if needed</p>
+            <p className="text-lg text-gray-500 mb-8">Select a technical service from PagerDuty</p>
 
-            {/* Scenario Selection */}
-            <div className="bg-blue-50 p-8 rounded-2xl border border-blue-200 mb-8">
-              <h3 className="text-xl font-semibold text-blue-900 mb-6">What describes your situation?</h3>
-              <p className="text-sm text-blue-700 mb-6">Choose the scenario that best matches your technical service needs:</p>
-
-              <div className="space-y-4">
-                <label className="flex items-start space-x-4 p-4 bg-white rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-25 transition-all duration-200">
-                  <input
-                    type="radio"
-                    name="serviceScenario"
-                    value="existing"
-                    checked={serviceScenario === 'existing'}
-                    onChange={(e) => setServiceScenario(e.target.value)}
-                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="text-lg font-semibold text-blue-900">I already have a technical service</div>
-                    <div className="text-sm text-blue-700 mt-1">
-                      You have an existing PagerDuty technical service that you want to associate with this service entry.
-                      We'll capture the service ID, name, and team information.
-                    </div>
-                  </div>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-base font-medium text-gray-900 mb-4">
+                  Select Technical Service ({allServices.length} services available)
                 </label>
-
-                <label className="flex items-start space-x-4 p-4 bg-white rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-25 transition-all duration-200">
-                  <input
-                    type="radio"
-                    name="serviceScenario"
-                    value="dynatrace"
-                    checked={serviceScenario === 'dynatrace'}
-                    onChange={(e) => setServiceScenario(e.target.value)}
-                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="text-lg font-semibold text-blue-900">I want to integrate with Dynatrace</div>
-                    <div className="text-sm text-blue-700 mt-1">
-                      You want to select a technical service and integrate it with Dynatrace for monitoring.
-                      We'll map the service and prepare it for Dynatrace integration.
-                    </div>
-                  </div>
-                </label>
-
-                <label className="flex items-start space-x-4 p-4 bg-white rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-25 transition-all duration-200">
-                  <input
-                    type="radio"
-                    name="serviceScenario"
-                    value="none"
-                    checked={serviceScenario === 'none'}
-                    onChange={(e) => setServiceScenario(e.target.value)}
-                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="text-lg font-semibold text-blue-900">I don't need technical service changes</div>
-                    <div className="text-sm text-blue-700 mt-1">
-                      You don't want to make any changes to technical service associations at this time.
-                      You can skip this section and proceed with team and user assignments only.
-                    </div>
-                  </div>
-                </label>
+                <input
+                  type="text"
+                  placeholder="Search services by name, ID, or team..."
+                  value={serviceSearchQuery}
+                  onChange={(e) => setServiceSearchQuery(e.target.value)}
+                  className="w-full px-6 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                />
               </div>
-
-              {/* Guidance Questions */}
-              {!serviceScenario && (
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                  <h4 className="text-lg font-semibold text-yellow-900 mb-3">Not sure which option to choose?</h4>
-                  <div className="text-sm text-yellow-800 space-y-2">
-                    <p><strong>Ask yourself:</strong></p>
-                    <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li>Do you already have a PagerDuty service set up for this application?</li>
-                      <li>Do you want to connect this service to Dynatrace for monitoring?</li>
-                      <li>Do you need to capture service ID and team information for reporting?</li>
-                      <li>Are you just setting up team assignments without technical service changes?</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Service Selection - Only show if user selected existing or dynatrace scenario */}
-            {(serviceScenario === 'existing' || serviceScenario === 'dynatrace') && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-base font-medium text-gray-900 mb-4">
-                    {serviceScenario === 'existing'
-                      ? `Select Your Existing Technical Service (${allServices.length} services available)`
-                      : `Select Service for Dynatrace Integration (${allServices.length} services available)`
-                    }
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Search services by name, ID, or team..."
-                    value={serviceSearchQuery}
-                    onChange={(e) => setServiceSearchQuery(e.target.value)}
-                    className="w-full px-6 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  />
-                </div>
 
               <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
                 {allServices
@@ -793,25 +610,7 @@ ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
                   })()}
                 </div>
               )}
-              </div>
-            )}
-
-            {/* No Service Changes Message */}
-            {serviceScenario === 'none' && (
-              <div className="bg-green-50 p-6 rounded-2xl border border-green-200">
-                <div className="flex items-center">
-                  <svg className="h-6 w-6 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <div>
-                    <h4 className="text-lg font-semibold text-green-900">No Technical Service Changes</h4>
-                    <p className="text-sm text-green-700 mt-1">
-                      You've chosen to skip technical service changes. Your team and user assignments will be saved without modifying technical service associations.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
