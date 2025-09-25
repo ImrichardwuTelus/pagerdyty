@@ -12,12 +12,10 @@ interface SortConfig {
 
 interface FilterConfig {
   searchQuery: string;
-  completionFilter: 'all' | 'completed' | 'in-progress' | 'not-started';
   serviceNameFilter: string;
   cmdbIdFilter: string;
   primeManagerFilter: string;
   primeDirectorFilter: string;
-  primeVpFilter: string;
   teamNameFilter: string;
 }
 
@@ -48,12 +46,10 @@ export default function ServiceManagementDashboard() {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
   const [filterConfig, setFilterConfig] = useState<FilterConfig>({
     searchQuery: '',
-    completionFilter: 'all',
     serviceNameFilter: '',
     cmdbIdFilter: '',
     primeManagerFilter: '',
     primeDirectorFilter: '',
-    primeVpFilter: '',
     teamNameFilter: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,7 +65,6 @@ export default function ServiceManagementDashboard() {
     const cmdbIds = new Set<string>();
     const primeManagers = new Set<string>();
     const primeDirectors = new Set<string>();
-    const primeVps = new Set<string>();
     const teamNames = new Set<string>();
 
     data.forEach(row => {
@@ -77,7 +72,6 @@ export default function ServiceManagementDashboard() {
       if (row.cmdb_id) cmdbIds.add(row.cmdb_id);
       if (row.prime_manager) primeManagers.add(row.prime_manager);
       if (row.prime_director) primeDirectors.add(row.prime_director);
-      if (row.prime_vp) primeVps.add(row.prime_vp);
       if (row.team_name) teamNames.add(row.team_name);
       if (row.owned_team) teamNames.add(row.owned_team);
     });
@@ -87,7 +81,6 @@ export default function ServiceManagementDashboard() {
       cmdbIds: Array.from(cmdbIds).sort(),
       primeManagers: Array.from(primeManagers).sort(),
       primeDirectors: Array.from(primeDirectors).sort(),
-      primeVps: Array.from(primeVps).sort(),
       teamNames: Array.from(teamNames).sort(),
     };
   }, [data]);
@@ -112,20 +105,6 @@ export default function ServiceManagementDashboard() {
         }
       }
 
-      // Completion filter
-      if (filterConfig.completionFilter !== 'all') {
-        switch (filterConfig.completionFilter) {
-          case 'completed':
-            if (row.completion !== 100) return false;
-            break;
-          case 'in-progress':
-            if (row.completion <= 0 || row.completion >= 100) return false;
-            break;
-          case 'not-started':
-            if (row.completion > 0) return false;
-            break;
-        }
-      }
 
       // Individual field filters
       if (
@@ -147,9 +126,6 @@ export default function ServiceManagementDashboard() {
         filterConfig.primeDirectorFilter &&
         row.prime_director !== filterConfig.primeDirectorFilter
       ) {
-        return false;
-      }
-      if (filterConfig.primeVpFilter && row.prime_vp !== filterConfig.primeVpFilter) {
         return false;
       }
       if (
@@ -450,26 +426,6 @@ export default function ServiceManagementDashboard() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Completion Status
-                  </label>
-                  <select
-                    value={filterConfig.completionFilter}
-                    onChange={e =>
-                      setFilterConfig(prev => ({
-                        ...prev,
-                        completionFilter: e.target.value as any,
-                      }))
-                    }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="completed">✅ Complete (100%)</option>
-                    <option value="in-progress">🔄 In Progress</option>
-                    <option value="not-started">❌ Not Started (0%)</option>
-                  </select>
-                </div>
                 <div className="flex items-end">
                   <button
                     onClick={addRow}
@@ -568,23 +524,6 @@ export default function ServiceManagementDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prime VP</label>
-                  <select
-                    value={filterConfig.primeVpFilter}
-                    onChange={e =>
-                      setFilterConfig(prev => ({ ...prev, primeVpFilter: e.target.value }))
-                    }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  >
-                    <option value="">All VPs</option>
-                    {uniqueValues.primeVps.map(vp => (
-                      <option key={vp} value={vp}>
-                        {vp}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Team Name</label>
                   <select
                     value={filterConfig.teamNameFilter}
@@ -607,12 +546,10 @@ export default function ServiceManagementDashboard() {
                   onClick={() =>
                     setFilterConfig({
                       searchQuery: '',
-                      completionFilter: 'all',
                       serviceNameFilter: '',
                       cmdbIdFilter: '',
                       primeManagerFilter: '',
                       primeDirectorFilter: '',
-                      primeVpFilter: '',
                       teamNameFilter: '',
                     })
                   }
@@ -699,14 +636,31 @@ export default function ServiceManagementDashboard() {
             <div className="px-8 py-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Excel Data</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Team Name, Tech-Svc, CMDB ID, Dynatrace Status, Prime Manager, Prime Director, Prime
-                VP
+                Service Name MP, IRIS Correlated Problems, Team Name, Tech-SVC, CMDB ID, Dynatrace Status, Prime Manager, Prime Director
               </p>
             </div>
             <div className="overflow-x-auto" style={{ maxHeight: '70vh' }}>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('service_name_mp')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Service Name MP</span>
+                        <SortIcon column={'service_name_mp'} />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('iris_correlated_problems')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>IRIS Correlated Problems</span>
+                        <SortIcon column={'iris_correlated_problems'} />
+                      </div>
+                    </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('team_name')}
@@ -718,11 +672,11 @@ export default function ServiceManagementDashboard() {
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('owned_team')}
+                      onClick={() => handleSort('tech_svc')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Tech-Svc</span>
-                        <SortIcon column={'owned_team'} />
+                        <span>Tech-SVC</span>
+                        <SortIcon column={'tech_svc'} />
                       </div>
                     </th>
                     <th
@@ -736,11 +690,11 @@ export default function ServiceManagementDashboard() {
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('dyna_service_name')}
+                      onClick={() => handleSort('dynatrace_status')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Dynatrace</span>
-                        <SortIcon column={'dyna_service_name'} />
+                        <span>Dynatrace Status</span>
+                        <SortIcon column={'dynatrace_status'} />
                       </div>
                     </th>
                     <th
@@ -761,15 +715,6 @@ export default function ServiceManagementDashboard() {
                         <SortIcon column={'prime_director'} />
                       </div>
                     </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('prime_vp')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Prime VP</span>
-                        <SortIcon column={'prime_vp'} />
-                      </div>
-                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
                       Actions
                     </th>
@@ -783,13 +728,25 @@ export default function ServiceManagementDashboard() {
                     >
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
+                          value={row.service_name_mp || ''}
+                          className="text-sm font-medium text-gray-900"
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
+                        <DisplayCell
+                          value={row.iris_correlated_problems || ''}
+                          className="text-sm text-gray-900"
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
+                        <DisplayCell
                           value={row.team_name || ''}
                           className="text-sm text-gray-900"
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
-                          value={row.owned_team || ''}
+                          value={row.tech_svc || ''}
                           className="text-sm text-gray-900"
                         />
                       </td>
@@ -797,21 +754,10 @@ export default function ServiceManagementDashboard() {
                         <DisplayCell value={row.cmdb_id || ''} className="text-sm text-gray-900" />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                        <div className="px-2 py-1 min-h-[32px] flex items-center">
-                          {(() => {
-                            const dynaValue = row.dyna_service_name;
-                            const hasValue = dynaValue && String(dynaValue).trim() !== '';
-                            return hasValue ? (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                                Yes
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
-                                No
-                              </span>
-                            );
-                          })()}
-                        </div>
+                        <DisplayCell
+                          value={row.dynatrace_status || ''}
+                          className="text-sm text-gray-900"
+                        />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
@@ -824,9 +770,6 @@ export default function ServiceManagementDashboard() {
                           value={row.prime_director || ''}
                           className="text-sm text-gray-900"
                         />
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                        <DisplayCell value={row.prime_vp || ''} className="text-sm text-gray-900" />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <button

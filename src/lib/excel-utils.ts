@@ -11,20 +11,23 @@ export const EXCEL_COLUMNS: ExcelColumn[] = [
   { key: 'service_name_mp', header: 'Service Name MP', width: 200 },
   { key: 'service_path', header: 'Service Path', width: 150 },
   { key: 'cmdb_id', header: 'CMDB ID', width: 120 },
-  { key: 'api_name', header: 'API Name', width: 120 },
+  { key: 'app_name', header: 'App Name', width: 120 },
   { key: 'prime_manager', header: 'Prime Manager', width: 150 },
   { key: 'prime_director', header: 'Prime Director', width: 150 },
   { key: 'prime_vp', header: 'Prime VP', width: 120 },
   { key: 'mse', header: 'MSE', width: 100 },
-  { key: 'dyna_service_name', header: 'DynaService Name', width: 150 },
+  { key: 'dyna_service_name', header: 'DynaServiceName', width: 150 },
   { key: 'next_hop_process_group', header: 'Next Hop Process Group', width: 180 },
+  { key: 'next_hop_endpoint', header: 'Next Hop Endpoint', width: 170 },
   { key: 'analysis_status', header: 'Analysis Status', width: 130 },
   { key: 'next_hop_service_code', header: 'Next Hop Service Code', width: 170 },
-  { key: 'enrichment_status', header: 'Enrichment Status', width: 140 },
   { key: 'team_name', header: 'Team Name', width: 120 },
+  { key: 'iris_correlated_problems', header: 'IRIS Correlated Problems', width: 180 },
   { key: 'confirmed', header: 'Confirmed', width: 100 },
-  { key: 'owned_team', header: 'Owned Team', width: 120 },
+  { key: 'tech_svc', header: 'Tech-SVC', width: 120 },
   { key: 'service_id', header: 'Service ID', width: 120 },
+  { key: 'owned_team', header: 'Owned Team', width: 120 },
+  { key: 'dynatrace_status', header: 'Dynatrace Status', width: 130 },
 ];
 
 export interface ExcelReadResult {
@@ -271,20 +274,22 @@ export function createSampleExcelData(): ExcelServiceRow[] {
       service_name_mp: 'User Authentication Service',
       service_path: '/api/v1/auth',
       cmdb_id: 'CMDB-001',
-      api_name: 'auth-service',
+      app_name: 'auth-app',
       prime_manager: 'John Doe',
       prime_director: 'Jane Smith',
       prime_vp: 'Bob Johnson',
       mse: 'MSE Team Alpha',
       dyna_service_name: 'auth-service-prod',
       next_hop_process_group: 'Authentication Process Group',
+      next_hop_endpoint: 'https://auth.example.com/api',
       analysis_status: 'active',
       next_hop_service_code: 'AUTH001',
-      enrichment_status: 'Enriched',
       team_name: 'Engineering',
+      iris_correlated_problems: 'IRIS-123, IRIS-456',
       confirmed: 'Yes',
-      owned_team: 'Security Team',
+      tech_svc: 'AUTH-SVC-001',
       service_id: 'srv-auth-001',
+      owned_team: 'Security Team',
       completion: 100,
       lastUpdated: new Date().toISOString(),
     },
@@ -293,21 +298,23 @@ export function createSampleExcelData(): ExcelServiceRow[] {
       service_name_mp: 'Payment Processing Service',
       service_path: '/api/v1/payments',
       cmdb_id: 'CMDB-002',
-      api_name: 'payment-service',
+      app_name: 'payment-app',
       prime_manager: '',
       prime_director: '',
       prime_vp: '',
       mse: '',
       dyna_service_name: 'payment-service-prod',
       next_hop_process_group: '',
+      next_hop_endpoint: '',
       analysis_status: 'active',
       next_hop_service_code: '',
-      enrichment_status: '',
       team_name: 'Finance',
+      iris_correlated_problems: '',
       confirmed: '',
-      owned_team: 'Finance Team',
+      tech_svc: '',
       service_id: 'srv-payment-002',
-      completion: 47,
+      owned_team: 'Finance Team',
+      completion: 42,
       lastUpdated: new Date().toISOString(),
     },
     {
@@ -315,21 +322,23 @@ export function createSampleExcelData(): ExcelServiceRow[] {
       service_name_mp: 'Notification Service',
       service_path: '',
       cmdb_id: 'CMDB-003',
-      api_name: 'notification-service',
+      app_name: 'notification-app',
       prime_manager: 'Alice Brown',
       prime_director: '',
       prime_vp: '',
       mse: 'MSE Team Beta',
       dyna_service_name: '',
       next_hop_process_group: 'Notification Process Group',
+      next_hop_endpoint: '',
       analysis_status: 'maintenance',
       next_hop_service_code: 'NOTIF001',
-      enrichment_status: '',
       team_name: '',
+      iris_correlated_problems: '',
       confirmed: 'No',
-      owned_team: '',
+      tech_svc: '',
       service_id: 'srv-notif-003',
-      completion: 53,
+      owned_team: '',
+      completion: 47,
       lastUpdated: new Date().toISOString(),
     },
   ];
@@ -392,8 +401,8 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'service_path';
     } else if (normalizedHeader === 'cmdb_id' || cleanHeader === 'cmdb_id') {
       mapping[header] = 'cmdb_id';
-    } else if (normalizedHeader === 'api_name' || cleanHeader === 'api_name') {
-      mapping[header] = 'api_name';
+    } else if (normalizedHeader === 'app_name' || cleanHeader === 'app_name') {
+      mapping[header] = 'app_name';
     } else if (normalizedHeader === 'prime_manager' || cleanHeader === 'prime_manager') {
       mapping[header] = 'prime_manager';
     } else if (normalizedHeader === 'prime_director' || cleanHeader === 'prime_director') {
@@ -406,20 +415,26 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'dyna_service_name';
     } else if (normalizedHeader === 'next_hop_process_group' || cleanHeader === 'next_hop_process_group') {
       mapping[header] = 'next_hop_process_group';
+    } else if (normalizedHeader === 'next_hop_endpoint' || cleanHeader === 'next_hop_endpoint') {
+      mapping[header] = 'next_hop_endpoint';
     } else if (normalizedHeader === 'analysis_status' || cleanHeader === 'analysis_status') {
       mapping[header] = 'analysis_status';
     } else if (normalizedHeader === 'next_hop_service_code' || cleanHeader === 'next_hop_service_code') {
       mapping[header] = 'next_hop_service_code';
-    } else if (normalizedHeader === 'enrichment_status' || cleanHeader === 'enrichment_status') {
-      mapping[header] = 'enrichment_status';
     } else if (normalizedHeader === 'team_name' || cleanHeader === 'team_name') {
       mapping[header] = 'team_name';
+    } else if (normalizedHeader === 'iris_correlated_problems' || cleanHeader === 'iris_correlated_problems') {
+      mapping[header] = 'iris_correlated_problems';
     } else if (normalizedHeader === 'confirmed' || cleanHeader === 'confirmed') {
       mapping[header] = 'confirmed';
-    } else if (normalizedHeader === 'owned_team' || cleanHeader === 'owned_team') {
-      mapping[header] = 'owned_team';
+    } else if (normalizedHeader === 'tech_svc' || cleanHeader === 'tech_svc' || normalizedHeader === 'tech-svc' || cleanHeader === 'tech-svc') {
+      mapping[header] = 'tech_svc';
     } else if (normalizedHeader === 'service_id' || cleanHeader === 'service_id') {
       mapping[header] = 'service_id';
+    } else if (normalizedHeader === 'owned_team' || cleanHeader === 'owned_team') {
+      mapping[header] = 'owned_team';
+    } else if (normalizedHeader === 'dynatrace_status' || cleanHeader === 'dynatrace_status') {
+      mapping[header] = 'dynatrace_status';
     }
     // Fallback to partial matching for common variations
     else if (normalizedHeader.includes('service') && (normalizedHeader.includes('name') || normalizedHeader.includes('mp'))) {
@@ -428,8 +443,8 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'service_path';
     } else if (normalizedHeader.includes('cmdb')) {
       mapping[header] = 'cmdb_id';
-    } else if (normalizedHeader.includes('api') && normalizedHeader.includes('name')) {
-      mapping[header] = 'api_name';
+    } else if (normalizedHeader.includes('app') && normalizedHeader.includes('name')) {
+      mapping[header] = 'app_name';
     } else if (normalizedHeader.includes('prime') && normalizedHeader.includes('manager')) {
       mapping[header] = 'prime_manager';
     } else if (normalizedHeader.includes('prime') && normalizedHeader.includes('director')) {
@@ -444,20 +459,24 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'dyna_service_name';
     } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('process')) {
       mapping[header] = 'next_hop_process_group';
+    } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('endpoint')) {
+      mapping[header] = 'next_hop_endpoint';
     } else if (normalizedHeader.includes('analysis') && normalizedHeader.includes('status')) {
       mapping[header] = 'analysis_status';
     } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('service')) {
       mapping[header] = 'next_hop_service_code';
-    } else if (normalizedHeader.includes('enrichment')) {
-      mapping[header] = 'enrichment_status';
     } else if (normalizedHeader.includes('team') && normalizedHeader.includes('name')) {
       mapping[header] = 'team_name';
+    } else if (normalizedHeader.includes('iris') && normalizedHeader.includes('correlated')) {
+      mapping[header] = 'iris_correlated_problems';
     } else if (normalizedHeader.includes('confirmed')) {
       mapping[header] = 'confirmed';
-    } else if (normalizedHeader.includes('owned') && normalizedHeader.includes('team')) {
-      mapping[header] = 'owned_team';
+    } else if (normalizedHeader.includes('tech') && normalizedHeader.includes('svc')) {
+      mapping[header] = 'tech_svc';
     } else if (normalizedHeader.includes('service') && normalizedHeader.includes('id')) {
       mapping[header] = 'service_id';
+    } else if (normalizedHeader.includes('owned') && normalizedHeader.includes('team')) {
+      mapping[header] = 'owned_team';
     }
   });
 
