@@ -35,6 +35,7 @@ export default function ServiceEditor() {
   const [populateTeamName, setPopulateTeamName] = useState<boolean>(false);
   const [populateTechSvc, setPopulateTechSvc] = useState<boolean>(false);
   const [serviceScenario, setServiceScenario] = useState<string>('');
+  const [currentExcelRow, setCurrentExcelRow] = useState<ExcelServiceRow | null>(null);
 
   // Fetch PagerDuty data with fallback to mock data
   useEffect(() => {
@@ -158,6 +159,39 @@ export default function ServiceEditor() {
 
     fetchServiceData();
   }, [serviceName, serviceId]);
+
+  // Fetch Excel row data to populate existing values
+  useEffect(() => {
+    const fetchExcelRowData = async () => {
+      if (!rowId) return;
+
+      try {
+        const response = await fetch('/api/excel');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            const currentRow = result.data.find((row: ExcelServiceRow) => row.id === rowId);
+            if (currentRow) {
+              setCurrentExcelRow(currentRow);
+
+              // Set confirmation checkbox based on Excel data
+              setServiceConfirmed(currentRow.confirmed?.toLowerCase() === 'yes');
+
+              // Pre-select tech service if it exists
+              if (currentRow['service id']) {
+                setSelectedTechService(currentRow['service id']);
+                setServiceScenario('existing');
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch Excel row data:', error);
+      }
+    };
+
+    fetchExcelRowData();
+  }, [rowId]);
 
   const handleSaveChanges = async () => {
     if (!service) return;
@@ -383,6 +417,60 @@ ${rowId ? '- Excel data updated based on selected scenario and options' : ''}`;
             </div>
           </div>
         </div>
+
+        {/* Current Excel Data */}
+        {currentExcelRow && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
+            <div className="px-12 py-8">
+              <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">Current Data</h2>
+              <p className="text-lg text-gray-500 mb-6">Existing information from your Excel data</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Team Name</h3>
+                  <p className="text-base text-blue-800">
+                    {currentExcelRow.team_name || "there isn't any"}
+                  </p>
+                </div>
+
+                <div className="bg-green-50 p-6 rounded-2xl border border-green-200">
+                  <h3 className="text-lg font-semibold text-green-900 mb-2">Prime Manager</h3>
+                  <p className="text-base text-green-800">
+                    {currentExcelRow.prime_manager || "there isn't any"}
+                  </p>
+                </div>
+
+                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-200">
+                  <h3 className="text-lg font-semibold text-purple-900 mb-2">Tech-Svc</h3>
+                  <p className="text-base text-purple-800">
+                    {currentExcelRow['tech-svc'] || currentExcelRow.owned_team || "there isn't any"}
+                  </p>
+                </div>
+
+                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-200">
+                  <h3 className="text-lg font-semibold text-orange-900 mb-2">Service ID</h3>
+                  <p className="text-base text-orange-800">
+                    {currentExcelRow['service id'] || "there isn't any"}
+                  </p>
+                </div>
+
+                <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-200">
+                  <h3 className="text-lg font-semibold text-yellow-900 mb-2">Confirmation Status</h3>
+                  <p className="text-base text-yellow-800">
+                    {currentExcelRow.confirmed || "there isn't any"}
+                  </p>
+                </div>
+
+                <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-200">
+                  <h3 className="text-lg font-semibold text-indigo-900 mb-2">Enrichment Status</h3>
+                  <p className="text-base text-indigo-800">
+                    {currentExcelRow.enrichment_status || "there isn't any"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* PagerDuty Teams */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
