@@ -8,23 +8,25 @@ const EXCEL_FILE_PATH = path.join(process.cwd(), 'public', 'mse_trace_analysis_e
 
 // Column mapping for Excel
 const EXCEL_COLUMNS = [
-  { key: 'service_name_mp', header: 'Service Name MP', width: 150 },
-  { key: 'service_path', header: 'Service Path', width: 200 },
+  { key: 'service_name_mp', header: 'Service Name MP', width: 200 },
+  { key: 'service_path', header: 'Service Path', width: 150 },
   { key: 'cmdb_id', header: 'CMDB ID', width: 120 },
-  { key: 'api_name', header: 'API Name', width: 120 },
+  { key: 'app_name', header: 'App Name', width: 120 },
   { key: 'prime_manager', header: 'Prime Manager', width: 150 },
   { key: 'prime_director', header: 'Prime Director', width: 150 },
   { key: 'prime_vp', header: 'Prime VP', width: 120 },
   { key: 'mse', header: 'MSE', width: 100 },
-  { key: 'dyna_service_name', header: 'DynaService Name', width: 150 },
+  { key: 'dyna_service_name', header: 'DynaServiceName', width: 150 },
   { key: 'next_hop_process_group', header: 'Next Hop Process Group', width: 180 },
+  { key: 'next_hop_endpoint', header: 'Next Hop Endpoint', width: 170 },
   { key: 'analysis_status', header: 'Analysis Status', width: 130 },
   { key: 'next_hop_service_code', header: 'Next Hop Service Code', width: 170 },
-  { key: 'enrichment_status', header: 'Enrichment Status', width: 140 },
   { key: 'team_name', header: 'Team Name', width: 120 },
+  { key: 'iris_correlated_problems', header: 'IRIS Correlated Problems', width: 180 },
   { key: 'confirmed', header: 'Confirmed', width: 100 },
-  { key: 'owned_team', header: 'Owned Team', width: 120 },
+  { key: 'tech_svc', header: 'Tech-SVC', width: 120 },
   { key: 'service_id', header: 'Service ID', width: 120 },
+  { key: 'owned_team', header: 'Owned Team', width: 120 },
 ] as const;
 
 // GET - Read Excel file
@@ -61,14 +63,14 @@ export async function GET() {
       const cleanHeader = normalizedHeader.replace(/[^a-z0-9_]/g, '_');
 
       // Map exact header matches first (case-insensitive)
-      if (normalizedHeader === 'service_name_mp' || cleanHeader === 'service_name_mp') {
+      if (normalizedHeader === 'service name mp' || cleanHeader === 'service_name_mp') {
         headerMapping[header] = 'service_name_mp';
       } else if (normalizedHeader === 'service path' || cleanHeader === 'service_path') {
         headerMapping[header] = 'service_path';
       } else if (normalizedHeader === 'cmdb id' || cleanHeader === 'cmdb_id') {
         headerMapping[header] = 'cmdb_id';
-      } else if (normalizedHeader === 'app name' || normalizedHeader === 'api name' || cleanHeader === 'api_name' || cleanHeader === 'app_name') {
-        headerMapping[header] = 'api_name';
+      } else if (normalizedHeader === 'app name' || cleanHeader === 'app_name') {
+        headerMapping[header] = 'app_name';
       } else if (normalizedHeader === 'prime manager' || cleanHeader === 'prime_manager') {
         headerMapping[header] = 'prime_manager';
       } else if (normalizedHeader === 'prime director' || cleanHeader === 'prime_director') {
@@ -79,27 +81,26 @@ export async function GET() {
         headerMapping[header] = 'mse';
       } else if (normalizedHeader === 'dynaservicename' || normalizedHeader === 'dyna service name' || cleanHeader === 'dynaservicename' || cleanHeader === 'dyna_service_name') {
         headerMapping[header] = 'dyna_service_name';
-      // Add fallback patterns for dynatrace columns
-      } else if (normalizedHeader.includes('dyna') && normalizedHeader.includes('service')) {
-        headerMapping[header] = 'dyna_service_name';
-      } else if (normalizedHeader.includes('dynatrace')) {
-        headerMapping[header] = 'dyna_service_name';
-      } else if (normalizedHeader === 'next_hop_process_group' || cleanHeader === 'next_hop_process_group') {
+      } else if (normalizedHeader === 'next hop process group' || cleanHeader === 'next_hop_process_group') {
         headerMapping[header] = 'next_hop_process_group';
-      } else if (normalizedHeader === 'analysis_status' || cleanHeader === 'analysis_status') {
+      } else if (normalizedHeader === 'next hop endpoint' || cleanHeader === 'next_hop_endpoint') {
+        headerMapping[header] = 'next_hop_endpoint';
+      } else if (normalizedHeader === 'analysis status' || cleanHeader === 'analysis_status') {
         headerMapping[header] = 'analysis_status';
-      } else if (normalizedHeader === 'next_hop_service_code' || cleanHeader === 'next_hop_service_code') {
+      } else if (normalizedHeader === 'next hop service code' || cleanHeader === 'next_hop_service_code') {
         headerMapping[header] = 'next_hop_service_code';
-      } else if (normalizedHeader === 'enrichment_status' || cleanHeader === 'enrichment_status') {
-        headerMapping[header] = 'enrichment_status';
       } else if (normalizedHeader === 'team name' || cleanHeader === 'team_name') {
         headerMapping[header] = 'team_name';
+      } else if (normalizedHeader === 'iris correlated problems' || cleanHeader === 'iris_correlated_problems') {
+        headerMapping[header] = 'iris_correlated_problems';
       } else if (normalizedHeader === 'confirmed' || cleanHeader === 'confirmed') {
         headerMapping[header] = 'confirmed';
-      } else if (normalizedHeader === 'owned team' || normalizedHeader === 'tech-svc' || cleanHeader === 'owned_team' || cleanHeader === 'tech_svc') {
-        headerMapping[header] = 'owned_team';
+      } else if (normalizedHeader === 'tech-svc' || normalizedHeader === 'tech svc' || cleanHeader === 'tech_svc') {
+        headerMapping[header] = 'tech_svc';
       } else if (normalizedHeader === 'service id' || cleanHeader === 'service_id') {
         headerMapping[header] = 'service_id';
+      } else if (normalizedHeader === 'owned team' || cleanHeader === 'owned_team') {
+        headerMapping[header] = 'owned_team';
       }
     });
 
@@ -135,7 +136,7 @@ export async function GET() {
 
 
         // Calculate completion
-        const totalFields = EXCEL_COLUMNS.length;
+        const totalFields = EXCEL_COLUMNS.length; // Now 19 fields
         const completedFields = EXCEL_COLUMNS.filter(col =>
           serviceRow[col.key] && String(serviceRow[col.key]).trim() !== ''
         ).length;

@@ -252,12 +252,12 @@ export default function ServiceEditor() {
               enrichment_status: 'PagerDuty Integrated',
               // Tech service fields - update if user selected a service
               ...(selectedTechServiceData ? {
-                'tech-svc': selectedTechServiceData.name,
-                'service id': selectedTechServiceData.id,
+                tech_svc: selectedTechServiceData.name,
+                service_id: selectedTechServiceData.id,
               } : {}),
-              // owned_team field: update from tech service team if available
+              // owned_team field: update from tech service team if available (save all teams)
               ...(selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0
-                ? { owned_team: selectedTechServiceData.teams[0].summary }
+                ? { owned_team: selectedTechServiceData.teams.map(team => team.summary).join(', ') }
                 : {}),
             }
           };
@@ -319,7 +319,7 @@ export default function ServiceEditor() {
 Changes Applied:
 - Team Name: ${selectedTeamData?.name ? selectedTeamData.name : 'Not updated'}
 - Tech-Svc: ${selectedTechServiceData?.name ? selectedTechServiceData.name : 'Not updated'}
-- Owned Team: ${selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams[0].summary : 'Not updated'}
+- Owned Team: ${selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams.map(team => team.summary).join(', ') : 'Not updated'}
 - Prime Manager: ${primeManagerData?.name || 'None'}
 - Service ID: ${selectedTechServiceData?.id || 'None'}
 - Confirmed: ${serviceConfirmed ? 'Yes' : 'No'}
@@ -561,7 +561,7 @@ ${rowId ? '- Excel data updated successfully' : ''}`;
                         <div className="text-lg font-medium text-gray-900">{svc.name}</div>
                         <div className="text-base text-gray-500">Service ID: {svc.id}</div>
                         <div className="text-sm text-gray-600">
-                          Owned Team: {svc.teams && svc.teams.length > 0 ? svc.teams[0].summary : 'No team assigned'}
+                          Owned Team: {svc.teams && svc.teams.length > 0 ? svc.teams.map(team => team.summary).join(', ') : 'No team assigned'}
                         </div>
                         {svc.summary && svc.summary !== svc.name && (
                           <div className="text-sm text-gray-600">Summary: {svc.summary}</div>
@@ -602,7 +602,7 @@ ${rowId ? '- Excel data updated successfully' : ''}`;
                         <div>
                           <label className="block text-sm font-medium text-blue-900 mb-2">Owned Team</label>
                           <div className="text-base font-medium text-blue-800">
-                            {selectedService.teams && selectedService.teams.length > 0 ? selectedService.teams[0].summary : 'No team assigned'}
+                            {selectedService.teams && selectedService.teams.length > 0 ? selectedService.teams.map(team => team.summary).join(', ') : 'No team assigned'}
                           </div>
                         </div>
                       </div>
