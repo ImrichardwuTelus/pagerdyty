@@ -279,7 +279,7 @@ export default function ServiceEditor() {
           }
         }
 
-        excelUpdates.dt_service_name = finalDynatraceServiceName; // DT service name as per conversation
+        excelUpdates.dt_service_name = finalDynatraceServiceName;
 
         // If user selected a tech service from PagerDuty API, populate additional fields
         if (techServiceFound && selectedTechService) {
