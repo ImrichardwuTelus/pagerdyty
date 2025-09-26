@@ -195,7 +195,11 @@ export async function writeExcelFile(data: ExcelServiceRow[], fileName: string =
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ data }),
+      body: JSON.stringify({
+        data,
+        preserveHeaders: true,
+        fileName
+      }),
     });
 
     if (!response.ok) {
@@ -231,22 +235,37 @@ export function downloadExcelFile(data: ExcelServiceRow[], fileName: string = 's
     // Create workbook
     const workbook = XLSX.utils.book_new();
 
-    // Prepare data for Excel
-    const excelData = [
-      // Headers
-      EXCEL_COLUMNS.map(col => col.header),
-      // Data rows
-      ...data.map(row =>
-        EXCEL_COLUMNS.map(col => row[col.key] || '')
-      )
-    ];
+    // Prepare data for Excel with consistent headers
+    const headers = EXCEL_COLUMNS.map(col => col.header);
+    const dataRows = data.map(row =>
+      EXCEL_COLUMNS.map(col => row[col.key] || '')
+    );
 
-    // Create worksheet
-    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+    // Create worksheet from JSON to preserve column structure
+    const worksheetData = data.map(row => {
+      const excelRow: any = {};
+      EXCEL_COLUMNS.forEach(col => {
+        excelRow[col.header] = row[col.key] || '';
+      });
+      return excelRow;
+    });
+
+    // Create worksheet using json_to_sheet to maintain column order
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData, {
+      header: headers,
+      skipHeader: false
+    });
 
     // Set column widths
     const columnWidths = EXCEL_COLUMNS.map(col => ({ wch: Math.floor((col.width || 100) / 7) }));
     worksheet['!cols'] = columnWidths;
+
+    // Ensure headers are preserved by setting the range
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    worksheet['!ref'] = XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: data.length, c: EXCEL_COLUMNS.length - 1 }
+    });
 
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Service Data');

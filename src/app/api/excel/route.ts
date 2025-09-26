@@ -169,7 +169,11 @@ export async function GET() {
 // POST - Write Excel file
 export async function POST(request: NextRequest) {
   try {
-    const { data }: { data: ExcelServiceRow[] } = await request.json();
+    const { data, preserveHeaders = false, fileName }: {
+      data: ExcelServiceRow[],
+      preserveHeaders?: boolean,
+      fileName?: string
+    } = await request.json();
 
     if (!data || !Array.isArray(data)) {
       return NextResponse.json(
@@ -181,22 +185,46 @@ export async function POST(request: NextRequest) {
     // Create workbook
     const workbook = XLSX.utils.book_new();
 
-    // Prepare data for Excel
-    const excelData = [
-      // Headers
-      EXCEL_COLUMNS.map(col => col.header),
-      // Data rows
-      ...data.map(row =>
-        EXCEL_COLUMNS.map(col => row[col.key] || '')
-      )
-    ];
+    let worksheet;
 
-    // Create worksheet
-    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+    if (preserveHeaders) {
+      // Use json_to_sheet to preserve header structure
+      const worksheetData = data.map(row => {
+        const excelRow: any = {};
+        EXCEL_COLUMNS.forEach(col => {
+          excelRow[col.header] = row[col.key] || '';
+        });
+        return excelRow;
+      });
+
+      worksheet = XLSX.utils.json_to_sheet(worksheetData, {
+        header: EXCEL_COLUMNS.map(col => col.header),
+        skipHeader: false
+      });
+    } else {
+      // Original array-based approach
+      const excelData = [
+        // Headers
+        EXCEL_COLUMNS.map(col => col.header),
+        // Data rows
+        ...data.map(row =>
+          EXCEL_COLUMNS.map(col => row[col.key] || '')
+        )
+      ];
+
+      worksheet = XLSX.utils.aoa_to_sheet(excelData);
+    }
 
     // Set column widths
     const columnWidths = EXCEL_COLUMNS.map(col => ({ wch: Math.floor((col.width || 100) / 7) }));
     worksheet['!cols'] = columnWidths;
+
+    // Ensure proper range is set
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    worksheet['!ref'] = XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: data.length, c: EXCEL_COLUMNS.length - 1 }
+    });
 
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Service Data');
@@ -214,7 +242,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Excel file updated successfully',
-      updatedRows: data.length
+      updatedRows: data.length,
+      fileName: fileName || 'service_data.xlsx'
     });
 
   } catch (error) {
