@@ -279,7 +279,7 @@ export default function ServiceEditor() {
           }
         }
 
-        excelUpdates.dt_service_name = finalDynatraceServiceName;
+        excelUpdates.dt_service_name = finalDynatraceServiceName; // DT service name as per conversation
 
         // If user selected a tech service from PagerDuty API, populate additional fields
         if (techServiceFound && selectedTechService) {
@@ -585,10 +585,11 @@ export default function ServiceEditor() {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-200 mb-12 overflow-hidden">
             <div className="px-12 py-8">
               <h2 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">
-                Step 2: Confirm Technical Service
+                Step 2: Validate PagerDuty Technical Service
               </h2>
               <p className="text-lg text-gray-500 mb-8">
-                Can you see your technical service in the PagerDuty Service API?
+                Select your technical service from PagerDuty to ensure accurate service metadata and
+                correlation.
               </p>
 
               <div className="space-y-8">
