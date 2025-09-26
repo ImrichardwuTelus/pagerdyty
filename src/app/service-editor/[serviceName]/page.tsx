@@ -174,11 +174,11 @@ export default function ServiceEditor() {
               setCurrentExcelRow(currentRow);
 
               // Set confirmation checkbox based on Excel data
-              setServiceConfirmed(currentRow.confirmed?.toLowerCase() === 'yes');
+              setServiceConfirmed(currentRow.user_acknowledge?.toLowerCase() === 'yes');
 
               // Pre-select tech service if it exists
-              if (currentRow['service id']) {
-                setSelectedTechService(currentRow['service id']);
+              if (currentRow.dt_service_id) {
+                setSelectedTechService(currentRow.dt_service_id);
                 setServiceScenario('existing');
               }
             }
@@ -245,20 +245,18 @@ export default function ServiceEditor() {
             rowId: rowId,
             updates: {
               // Update team_name if we have a selected team
-              ...(selectedTeamData?.name ? { team_name: selectedTeamData.name } : {}),
+              ...(selectedTeamData?.name ? {
+                pd_team_name: selectedTeamData.name
+              } : {}),
               // Only update prime_manager if we have a selected manager
               ...(primeManagerData?.name ? { prime_manager: primeManagerData.name } : {}),
-              confirmed: serviceConfirmed ? 'Yes' : 'No',
-              enrichment_status: 'PagerDuty Integrated',
+              user_acknowledge: serviceConfirmed ? 'Yes' : 'No',
+              integrated_with_pd: 'Yes',
               // Tech service fields - update if user selected a service
               ...(selectedTechServiceData ? {
-                tech_svc: selectedTechServiceData.name,
-                service_id: selectedTechServiceData.id,
+                pd_tech_svc: selectedTechServiceData.name,
+                dt_service_id: selectedTechServiceData.id,
               } : {}),
-              // owned_team field: update from tech service team if available (save all teams)
-              ...(selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0
-                ? { owned_team: selectedTechServiceData.teams.map(team => team.summary).join(', ') }
-                : {}),
             }
           };
 
@@ -317,13 +315,14 @@ export default function ServiceEditor() {
       const successMessage = `Service data ${isRealService ? 'updated' : 'prepared for update'} successfully!
 
 Changes Applied:
-- Team Name: ${selectedTeamData?.name ? selectedTeamData.name : 'Not updated'}
-- Tech-Svc: ${selectedTechServiceData?.name ? selectedTechServiceData.name : 'Not updated'}
+- PD Team Name: ${selectedTeamData?.name ? selectedTeamData.name : 'Not updated'}
+- PD Tech-Svc: ${selectedTechServiceData?.name ? selectedTechServiceData.name : 'Not updated'}
 - Owned Team: ${selectedTechServiceData?.teams && selectedTechServiceData.teams.length > 0 ? selectedTechServiceData.teams.map(team => team.summary).join(', ') : 'Not updated'}
 - Prime Manager: ${primeManagerData?.name || 'None'}
-- Service ID: ${selectedTechServiceData?.id || 'None'}
-- Confirmed: ${serviceConfirmed ? 'Yes' : 'No'}
-- CMDB ID: ${cmdbId || 'N/A'}
+- DT Service ID: ${selectedTechServiceData?.id || 'None'}
+- User Acknowledge: ${serviceConfirmed ? 'Yes' : 'No'}
+- Integrated with PD: Yes
+- MP CMDB ID: ${cmdbId || 'N/A'}
 ${rowId ? '- Excel data updated successfully' : ''}`;
 
       // Show success message and redirect
@@ -592,11 +591,11 @@ ${rowId ? '- Excel data updated successfully' : ''}`;
                     return (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-blue-900 mb-2">Tech-SVC</label>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">PD Tech-SVC</label>
                           <div className="text-base font-medium text-blue-800">{selectedService.name}</div>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-blue-900 mb-2">Service ID</label>
+                          <label className="block text-sm font-medium text-blue-900 mb-2">DT Service ID</label>
                           <div className="text-base font-medium text-blue-800">{selectedService.id}</div>
                         </div>
                         <div>

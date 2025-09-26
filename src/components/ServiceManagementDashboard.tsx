@@ -40,8 +40,6 @@ export default function ServiceManagementDashboard() {
     getOverallProgress,
   } = useExcelData();
 
-  // Removed focus event listener that was causing random reloads
-
   // UI State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
   const [filterConfig, setFilterConfig] = useState<FilterConfig>({
@@ -68,12 +66,11 @@ export default function ServiceManagementDashboard() {
     const teamNames = new Set<string>();
 
     data.forEach(row => {
-      if (row.service_name_mp) serviceNames.add(row.service_name_mp);
-      if (row.cmdb_id) cmdbIds.add(row.cmdb_id);
+      if (row.mp_service_name) serviceNames.add(row.mp_service_name);
+      if (row.mp_cmdb_id) cmdbIds.add(row.mp_cmdb_id);
       if (row.prime_manager) primeManagers.add(row.prime_manager);
       if (row.prime_director) primeDirectors.add(row.prime_director);
-      if (row.team_name) teamNames.add(row.team_name);
-      if (row.owned_team) teamNames.add(row.owned_team);
+      if (row.pd_team_name) teamNames.add(row.pd_team_name);
     });
 
     return {
@@ -92,28 +89,28 @@ export default function ServiceManagementDashboard() {
       if (filterConfig.searchQuery) {
         const query = filterConfig.searchQuery.toLowerCase();
         const searchableFields = [
-          row.service_name_mp,
-          row.api_name,
-          row.cmdb_id,
-          row.service_id,
+          row.mp_service_name,
+          row.mp_cmdb_id,
+          row.dt_service_id,
           row.prime_manager,
           row.prime_director,
           row.prime_vp,
+          row.pd_team_name,
+          row.pd_tech_svc,
         ];
         if (!searchableFields.some(field => field?.toLowerCase().includes(query))) {
           return false;
         }
       }
 
-
       // Individual field filters
       if (
         filterConfig.serviceNameFilter &&
-        row.service_name_mp !== filterConfig.serviceNameFilter
+        row.mp_service_name !== filterConfig.serviceNameFilter
       ) {
         return false;
       }
-      if (filterConfig.cmdbIdFilter && row.cmdb_id !== filterConfig.cmdbIdFilter) {
+      if (filterConfig.cmdbIdFilter && row.mp_cmdb_id !== filterConfig.cmdbIdFilter) {
         return false;
       }
       if (
@@ -130,8 +127,7 @@ export default function ServiceManagementDashboard() {
       }
       if (
         filterConfig.teamNameFilter &&
-        row.team_name !== filterConfig.teamNameFilter &&
-        row.owned_team !== filterConfig.teamNameFilter
+        row.pd_team_name !== filterConfig.teamNameFilter
       ) {
         return false;
       }
@@ -177,7 +173,6 @@ export default function ServiceManagementDashboard() {
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
 
   // Handlers
-
   const handleSort = (key: keyof ExcelServiceRow) => {
     setSortConfig(current => ({
       key,
@@ -469,7 +464,7 @@ export default function ServiceManagementDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CMDB ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">MP CMDB ID</label>
                   <select
                     value={filterConfig.cmdbIdFilter}
                     onChange={e =>
@@ -524,7 +519,7 @@ export default function ServiceManagementDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Team Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">PD Team Name</label>
                   <select
                     value={filterConfig.teamNameFilter}
                     onChange={e =>
@@ -636,7 +631,8 @@ export default function ServiceManagementDashboard() {
             <div className="px-8 py-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Excel Data</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Service Name MP, IRIS Correlated Problems, Team Name, Tech-SVC, CMDB ID, Dynatrace Status, Prime Manager, Prime Director
+                MP Service Name, Integrated with PD, PD Team Name, PD Tech-SVC, MP CMDB ID,
+                DT Service Name, Prime Manager, Prime Director
               </p>
             </div>
             <div className="overflow-x-auto" style={{ maxHeight: '70vh' }}>
@@ -645,56 +641,56 @@ export default function ServiceManagementDashboard() {
                   <tr>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('service_name_mp')}
+                      onClick={() => handleSort('mp_service_name')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Service Name MP</span>
-                        <SortIcon column={'service_name_mp'} />
+                        <span>MP Service Name</span>
+                        <SortIcon column={'mp_service_name'} />
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('iris_correlated_problems')}
+                      onClick={() => handleSort('integrated_with_pd')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>IRIS Correlated Problems</span>
-                        <SortIcon column={'iris_correlated_problems'} />
+                        <span>Integrated with PD</span>
+                        <SortIcon column={'integrated_with_pd'} />
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('team_name')}
+                      onClick={() => handleSort('pd_team_name')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Team Name</span>
-                        <SortIcon column={'team_name'} />
+                        <span>PD Team Name</span>
+                        <SortIcon column={'pd_team_name'} />
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('tech_svc')}
+                      onClick={() => handleSort('pd_tech_svc')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Tech-SVC</span>
-                        <SortIcon column={'tech_svc'} />
+                        <span>PD Tech-SVC</span>
+                        <SortIcon column={'pd_tech_svc'} />
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('cmdb_id')}
+                      onClick={() => handleSort('mp_cmdb_id')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>CMDB ID</span>
-                        <SortIcon column={'cmdb_id'} />
+                        <span>MP CMDB ID</span>
+                        <SortIcon column={'mp_cmdb_id'} />
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('dynatrace_status')}
+                      onClick={() => handleSort('dt_service_name')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Dynatrace Status</span>
-                        <SortIcon column={'dynatrace_status'} />
+                        <span>DT Service Name</span>
+                        <SortIcon column={'dt_service_name'} />
                       </div>
                     </th>
                     <th
@@ -728,47 +724,36 @@ export default function ServiceManagementDashboard() {
                     >
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
-                          value={row.service_name_mp || ''}
+                          value={row.mp_service_name || ''}
                           className="text-sm font-medium text-gray-900"
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
-                          value={row.iris_correlated_problems || ''}
+                          value={row.integrated_with_pd || ''}
                           className="text-sm text-gray-900"
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
-                          value={row.team_name || ''}
+                          value={row.pd_team_name || ''}
                           className="text-sm text-gray-900"
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
-                          value={row.tech_svc || ''}
+                          value={row.pd_tech_svc || ''}
                           className="text-sm text-gray-900"
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                        <DisplayCell value={row.cmdb_id || ''} className="text-sm text-gray-900" />
+                        <DisplayCell value={row.mp_cmdb_id || ''} className="text-sm text-gray-900" />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
-                        <div className="px-2 py-1 min-h-[32px] flex items-center">
-                          {(() => {
-                            const dynaValue = row.dyna_service_name;
-                            const hasValue = dynaValue && String(dynaValue).trim() !== '';
-                            return hasValue ? (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                                Yes
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
-                                No
-                              </span>
-                            );
-                          })()}
-                        </div>
+                        <DisplayCell
+                          value={row.dt_service_name || ''}
+                          className="text-sm text-gray-900"
+                        />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
@@ -786,11 +771,11 @@ export default function ServiceManagementDashboard() {
                         <button
                           onClick={() => {
                             const serviceName = encodeURIComponent(
-                              row.service_name_mp || 'unnamed-service'
+                              row.mp_service_name || 'unnamed-service'
                             );
-                            const serviceId = encodeURIComponent(row.service_id || row.id);
+                            const serviceId = encodeURIComponent(row.dt_service_id || row.id);
                             window.location.href = `/service-editor/${serviceName}?id=${serviceId}&cmdb=${
-                              row.cmdb_id || ''
+                              row.mp_cmdb_id || ''
                             }&rowId=${row.id}`;
                           }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
@@ -879,22 +864,24 @@ export default function ServiceManagementDashboard() {
             <div className="px-8 py-6 border-b border-gray-200/50">
               <h3 className="text-lg font-semibold text-gray-900">Service Progress Tracking</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Completion status for Team Name, Tech-Svc, Service Name, CMDB ID fields
+                Completion status for PD Team Name, PD Tech SVC, MP Service Name, MP CMDB ID fields
               </p>
             </div>
             <div className="px-8 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
                 {filteredAndSortedData.map(row => {
-                  // Calculate completion for key fields only: team_name, owned_team, service_name_mp, cmdb_id
+                  // Calculate completion for key fields only: pd_team_name, pd_tech_svc, mp_service_name, mp_cmdb_id
                   const keyFields = [
-                    'team_name',
-                    'owned_team',
-                    'service_name_mp',
-                    'cmdb_id',
+                    'mp_service_name',
+                    'mp_cmdb_id',
+                    'pd_team_name',
+                    'pd_tech_svc',
                   ] as const;
+
                   const completedKeyFields = keyFields.filter(
                     field => row[field] && String(row[field]).trim() !== ''
                   ).length;
+
                   const keyFieldCompletion = Math.round(
                     (completedKeyFields / keyFields.length) * 100
                   );
@@ -906,7 +893,7 @@ export default function ServiceManagementDashboard() {
                     >
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-medium text-gray-900 text-sm truncate">
-                          {row.service_name_mp || row.api_name || 'Unnamed Service'}
+                          {row.mp_service_name || 'Unnamed Service'}
                         </h4>
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -942,27 +929,27 @@ export default function ServiceManagementDashboard() {
                       </div>
                       <div className="mt-2 space-y-1">
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">Team Name:</span>
-                          <span className={row.team_name ? 'text-green-600' : 'text-red-500'}>
-                            {row.team_name ? '✓' : '✗'}
+                          <span className="text-gray-500">PD Team Name:</span>
+                          <span className={row.pd_team_name ? 'text-green-600' : 'text-red-500'}>
+                            {row.pd_team_name ? '✓' : '✗'}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">Tech-Svc:</span>
-                          <span className={row.owned_team ? 'text-green-600' : 'text-red-500'}>
-                            {row.owned_team ? '✓' : '✗'}
+                          <span className="text-gray-500">PD Tech SVC:</span>
+                          <span className={row.pd_tech_svc ? 'text-green-600' : 'text-red-500'}>
+                            {row.pd_tech_svc ? '✓' : '✗'}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-gray-500">Service:</span>
-                          <span className={row.service_name_mp ? 'text-green-600' : 'text-red-500'}>
-                            {row.service_name_mp ? '✓' : '✗'}
+                          <span className={row.mp_service_name ? 'text-green-600' : 'text-red-500'}>
+                            {row.mp_service_name ? '✓' : '✗'}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">CMDB:</span>
-                          <span className={row.cmdb_id ? 'text-green-600' : 'text-red-500'}>
-                            {row.cmdb_id ? '✓' : '✗'}
+                          <span className="text-gray-500">MP CMDB:</span>
+                          <span className={row.mp_cmdb_id ? 'text-green-600' : 'text-red-500'}>
+                            {row.mp_cmdb_id ? '✓' : '✗'}
                           </span>
                         </div>
                       </div>

@@ -6,27 +6,30 @@ import type { ExcelServiceRow } from '@/types/pagerduty';
 
 const EXCEL_FILE_PATH = path.join(process.cwd(), 'public', 'mse_trace_analysis_enriched_V2.xlsx');
 
-// Column mapping for Excel
+// Column mapping for Excel - LOWERCASE UNDERSCORE STRUCTURE
 const EXCEL_COLUMNS = [
-  { key: 'service_name_mp', header: 'Service Name MP', width: 200 },
-  { key: 'service_path', header: 'Service Path', width: 150 },
-  { key: 'cmdb_id', header: 'CMDB ID', width: 120 },
-  { key: 'app_name', header: 'App Name', width: 120 },
+  { key: 'mp_service_name', header: 'MP Service Name', width: 200 },
+  { key: 'mp_service_path', header: 'MP Service Path', width: 150 },
+  { key: 'mp_cmdb_id', header: 'MP CMDB ID', width: 120 },
+  { key: 'pd_tech_svc', header: 'PD Tech SVC', width: 120 },
   { key: 'prime_manager', header: 'Prime Manager', width: 150 },
   { key: 'prime_director', header: 'Prime Director', width: 150 },
   { key: 'prime_vp', header: 'Prime VP', width: 120 },
   { key: 'mse', header: 'MSE', width: 100 },
-  { key: 'dyna_service_name', header: 'DynaServiceName', width: 150 },
+  { key: 'dt_service_name', header: 'DT Service Name', width: 150 },
   { key: 'next_hop_process_group', header: 'Next Hop Process Group', width: 180 },
   { key: 'next_hop_endpoint', header: 'Next Hop Endpoint', width: 170 },
   { key: 'analysis_status', header: 'Analysis Status', width: 130 },
   { key: 'next_hop_service_code', header: 'Next Hop Service Code', width: 170 },
-  { key: 'team_name', header: 'Team Name', width: 120 },
-  { key: 'iris_correlated_problems', header: 'IRIS Correlated Problems', width: 180 },
-  { key: 'confirmed', header: 'Confirmed', width: 100 },
-  { key: 'tech_svc', header: 'Tech-SVC', width: 120 },
-  { key: 'service_id', header: 'Service ID', width: 120 },
-  { key: 'owned_team', header: 'Owned Team', width: 120 },
+  { key: 'pd_team_name', header: 'PD Team Name', width: 120 },
+  { key: 'integrated_with_pd', header: 'Integrated with PD', width: 180 },
+  { key: 'user_acknowledge', header: 'User Acknowledge', width: 120 },
+  { key: 'dt_service_id', header: 'DT Service ID', width: 120 },
+  { key: 'terraform_onboarding', header: 'Terraform Onboarding', width: 150 },
+  { key: 'team_name_does_not_exist', header: 'Team Name Does Not Exist', width: 180 },
+  { key: 'tech_svc_does_not_exist', header: 'Tech SVC Does Not Exist', width: 180 },
+  { key: 'update_team_name', header: 'Update Team Name', width: 150 },
+  { key: 'update_tech_svc', header: 'Update Tech SVC', width: 150 },
 ] as const;
 
 // GET - Read Excel file
@@ -55,55 +58,59 @@ export async function GET() {
     const headers = rawData[0] as string[];
     const dataRows = rawData.slice(1) as any[][];
 
-
-    // Create header mapping
+    // Create header mapping - LOWERCASE UNDERSCORE STRUCTURE
     const headerMapping: Record<string, keyof ExcelServiceRow> = {};
     headers.forEach(header => {
       const normalizedHeader = header.toLowerCase().trim();
       const cleanHeader = normalizedHeader.replace(/[^a-z0-9_]/g, '_');
 
       // Map exact header matches first (case-insensitive)
-      if (normalizedHeader === 'service name mp' || cleanHeader === 'service_name_mp') {
-        headerMapping[header] = 'service_name_mp';
-      } else if (normalizedHeader === 'service path' || cleanHeader === 'service_path') {
-        headerMapping[header] = 'service_path';
-      } else if (normalizedHeader === 'cmdb id' || cleanHeader === 'cmdb_id') {
-        headerMapping[header] = 'cmdb_id';
-      } else if (normalizedHeader === 'app name' || cleanHeader === 'app_name') {
-        headerMapping[header] = 'app_name';
-      } else if (normalizedHeader === 'prime manager' || cleanHeader === 'prime_manager') {
+      if (normalizedHeader === 'mp service name' || cleanHeader === 'mp_service_name' || normalizedHeader === 'mp_service_name') {
+        headerMapping[header] = 'mp_service_name';
+      } else if (normalizedHeader === 'mp service path' || cleanHeader === 'mp_service_path' || normalizedHeader === 'mp_service_path') {
+        headerMapping[header] = 'mp_service_path';
+      } else if (normalizedHeader === 'mp cmdb id' || cleanHeader === 'mp_cmdb_id' || normalizedHeader === 'mp_cmdb_id') {
+        headerMapping[header] = 'mp_cmdb_id';
+      } else if (normalizedHeader === 'pd tech svc' || cleanHeader === 'pd_tech_svc' || normalizedHeader === 'pd_tech_svc') {
+        headerMapping[header] = 'pd_tech_svc';
+      } else if (normalizedHeader === 'prime manager' || cleanHeader === 'prime_manager' || normalizedHeader === 'prime_manager') {
         headerMapping[header] = 'prime_manager';
-      } else if (normalizedHeader === 'prime director' || cleanHeader === 'prime_director') {
+      } else if (normalizedHeader === 'prime director' || cleanHeader === 'prime_director' || normalizedHeader === 'prime_director') {
         headerMapping[header] = 'prime_director';
-      } else if (normalizedHeader === 'prime vp' || cleanHeader === 'prime_vp') {
+      } else if (normalizedHeader === 'prime vp' || cleanHeader === 'prime_vp' || normalizedHeader === 'prime_vp') {
         headerMapping[header] = 'prime_vp';
       } else if (normalizedHeader === 'mse' || cleanHeader === 'mse') {
         headerMapping[header] = 'mse';
-      } else if (normalizedHeader === 'dynaservicename' || normalizedHeader === 'dyna service name' || cleanHeader === 'dynaservicename' || cleanHeader === 'dyna_service_name') {
-        headerMapping[header] = 'dyna_service_name';
-      } else if (normalizedHeader === 'next hop process group' || cleanHeader === 'next_hop_process_group') {
+      } else if (normalizedHeader === 'dt service name' || cleanHeader === 'dt_service_name' || normalizedHeader === 'dt_service_name') {
+        headerMapping[header] = 'dt_service_name';
+      } else if (normalizedHeader === 'next hop process group' || cleanHeader === 'next_hop_process_group' || normalizedHeader === 'next_hop_process_group') {
         headerMapping[header] = 'next_hop_process_group';
-      } else if (normalizedHeader === 'next hop endpoint' || cleanHeader === 'next_hop_endpoint') {
+      } else if (normalizedHeader === 'next hop endpoint' || cleanHeader === 'next_hop_endpoint' || normalizedHeader === 'next_hop_endpoint') {
         headerMapping[header] = 'next_hop_endpoint';
-      } else if (normalizedHeader === 'analysis status' || cleanHeader === 'analysis_status') {
+      } else if (normalizedHeader === 'analysis status' || cleanHeader === 'analysis_status' || normalizedHeader === 'analysis_status') {
         headerMapping[header] = 'analysis_status';
-      } else if (normalizedHeader === 'next hop service code' || cleanHeader === 'next_hop_service_code') {
+      } else if (normalizedHeader === 'next hop service code' || cleanHeader === 'next_hop_service_code' || normalizedHeader === 'next_hop_service_code') {
         headerMapping[header] = 'next_hop_service_code';
-      } else if (normalizedHeader === 'team name' || cleanHeader === 'team_name') {
-        headerMapping[header] = 'team_name';
-      } else if (normalizedHeader === 'iris correlated problems' || cleanHeader === 'iris_correlated_problems') {
-        headerMapping[header] = 'iris_correlated_problems';
-      } else if (normalizedHeader === 'confirmed' || cleanHeader === 'confirmed') {
-        headerMapping[header] = 'confirmed';
-      } else if (normalizedHeader === 'tech-svc' || normalizedHeader === 'tech svc' || cleanHeader === 'tech_svc') {
-        headerMapping[header] = 'tech_svc';
-      } else if (normalizedHeader === 'service id' || cleanHeader === 'service_id') {
-        headerMapping[header] = 'service_id';
-      } else if (normalizedHeader === 'owned team' || cleanHeader === 'owned_team') {
-        headerMapping[header] = 'owned_team';
+      } else if (normalizedHeader === 'pd team name' || cleanHeader === 'pd_team_name' || normalizedHeader === 'pd_team_name') {
+        headerMapping[header] = 'pd_team_name';
+      } else if (normalizedHeader === 'integrated with pd' || cleanHeader === 'integrated_with_pd' || normalizedHeader === 'integrated_with_pd') {
+        headerMapping[header] = 'integrated_with_pd';
+      } else if (normalizedHeader === 'user acknowledge' || cleanHeader === 'user_acknowledge' || normalizedHeader === 'user_acknowledge') {
+        headerMapping[header] = 'user_acknowledge';
+      } else if (normalizedHeader === 'dt service id' || cleanHeader === 'dt_service_id' || normalizedHeader === 'dt_service_id') {
+        headerMapping[header] = 'dt_service_id';
+      } else if (normalizedHeader === 'terraform onboarding' || cleanHeader === 'terraform_onboarding' || normalizedHeader === 'terraform_onboarding') {
+        headerMapping[header] = 'terraform_onboarding';
+      } else if (normalizedHeader === 'team name does not exist' || cleanHeader === 'team_name_does_not_exist' || normalizedHeader === 'team_name_does_not_exist') {
+        headerMapping[header] = 'team_name_does_not_exist';
+      } else if (normalizedHeader === 'tech svc does not exist' || cleanHeader === 'tech_svc_does_not_exist' || normalizedHeader === 'tech_svc_does_not_exist') {
+        headerMapping[header] = 'tech_svc_does_not_exist';
+      } else if (normalizedHeader === 'update team name' || cleanHeader === 'update_team_name' || normalizedHeader === 'update_team_name') {
+        headerMapping[header] = 'update_team_name';
+      } else if (normalizedHeader === 'update tech svc' || cleanHeader === 'update_tech_svc' || normalizedHeader === 'update_tech_svc') {
+        headerMapping[header] = 'update_tech_svc';
       }
     });
-
 
     // Convert to ExcelServiceRow format
     const processedData: ExcelServiceRow[] = dataRows
@@ -134,9 +141,8 @@ export async function GET() {
           }
         });
 
-
         // Calculate completion
-        const totalFields = EXCEL_COLUMNS.length; // Now 19 fields
+        const totalFields = EXCEL_COLUMNS.length;
         const completedFields = EXCEL_COLUMNS.filter(col =>
           serviceRow[col.key] && String(serviceRow[col.key]).trim() !== ''
         ).length;

@@ -8,26 +8,28 @@ export interface ExcelColumn {
 }
 
 export const EXCEL_COLUMNS: ExcelColumn[] = [
-  { key: 'service_name_mp', header: 'Service Name MP', width: 200 },
-  { key: 'service_path', header: 'Service Path', width: 150 },
-  { key: 'cmdb_id', header: 'CMDB ID', width: 120 },
-  { key: 'app_name', header: 'App Name', width: 120 },
+  { key: 'mp_service_name', header: 'MP Service Name', width: 200 },
+  { key: 'mp_service_path', header: 'MP Service Path', width: 150 },
+  { key: 'mp_cmdb_id', header: 'MP CMDB ID', width: 120 },
+  { key: 'pd_tech_svc', header: 'PD Tech SVC', width: 120 },
   { key: 'prime_manager', header: 'Prime Manager', width: 150 },
   { key: 'prime_director', header: 'Prime Director', width: 150 },
   { key: 'prime_vp', header: 'Prime VP', width: 120 },
   { key: 'mse', header: 'MSE', width: 100 },
-  { key: 'dyna_service_name', header: 'DynaServiceName', width: 150 },
+  { key: 'dt_service_name', header: 'DT Service Name', width: 150 },
   { key: 'next_hop_process_group', header: 'Next Hop Process Group', width: 180 },
   { key: 'next_hop_endpoint', header: 'Next Hop Endpoint', width: 170 },
   { key: 'analysis_status', header: 'Analysis Status', width: 130 },
   { key: 'next_hop_service_code', header: 'Next Hop Service Code', width: 170 },
-  { key: 'team_name', header: 'Team Name', width: 120 },
-  { key: 'iris_correlated_problems', header: 'IRIS Correlated Problems', width: 180 },
-  { key: 'confirmed', header: 'Confirmed', width: 100 },
-  { key: 'tech_svc', header: 'Tech-SVC', width: 120 },
-  { key: 'service_id', header: 'Service ID', width: 120 },
-  { key: 'owned_team', header: 'Owned Team', width: 120 },
-  { key: 'dynatrace_status', header: 'Dynatrace Status', width: 130 },
+  { key: 'pd_team_name', header: 'PD Team Name', width: 120 },
+  { key: 'integrated_with_pd', header: 'Integrated with PD', width: 180 },
+  { key: 'user_acknowledge', header: 'User Acknowledge', width: 120 },
+  { key: 'dt_service_id', header: 'DT Service ID', width: 120 },
+  { key: 'terraform_onboarding', header: 'Terraform Onboarding', width: 150 },
+  { key: 'team_name_does_not_exist', header: 'Team Name Does Not Exist', width: 180 },
+  { key: 'tech_svc_does_not_exist', header: 'Tech SVC Does Not Exist', width: 180 },
+  { key: 'update_team_name', header: 'Update Team Name', width: 150 },
+  { key: 'update_tech_svc', header: 'Update Tech SVC', width: 150 },
 ];
 
 export interface ExcelReadResult {
@@ -271,73 +273,82 @@ export function createSampleExcelData(): ExcelServiceRow[] {
   const sampleData: ExcelServiceRow[] = [
     {
       id: 'sample-1',
-      service_name_mp: 'User Authentication Service',
-      service_path: '/api/v1/auth',
-      cmdb_id: 'CMDB-001',
-      app_name: 'auth-app',
+      mp_service_name: 'User Authentication Service',
+      mp_service_path: '/api/v1/auth',
+      mp_cmdb_id: 'CMDB-001',
+      pd_tech_svc: 'AUTH-SVC-001',
       prime_manager: 'John Doe',
       prime_director: 'Jane Smith',
       prime_vp: 'Bob Johnson',
       mse: 'MSE Team Alpha',
-      dyna_service_name: 'auth-service-prod',
+      dt_service_name: 'auth-service-prod',
       next_hop_process_group: 'Authentication Process Group',
       next_hop_endpoint: 'https://auth.example.com/api',
       analysis_status: 'active',
       next_hop_service_code: 'AUTH001',
-      team_name: 'Engineering',
-      iris_correlated_problems: 'IRIS-123, IRIS-456',
-      confirmed: 'Yes',
-      tech_svc: 'AUTH-SVC-001',
-      service_id: 'srv-auth-001',
-      owned_team: 'Security Team',
+      pd_team_name: 'Engineering',
+      integrated_with_pd: 'Yes',
+      user_acknowledge: 'Yes',
+      dt_service_id: 'srv-auth-001',
+      terraform_onboarding: 'Yes',
+      team_name_does_not_exist: 'No',
+      tech_svc_does_not_exist: 'No',
+      update_team_name: 'No',
+      update_tech_svc: 'No',
       completion: 100,
       lastUpdated: new Date().toISOString(),
     },
     {
       id: 'sample-2',
-      service_name_mp: 'Payment Processing Service',
-      service_path: '/api/v1/payments',
-      cmdb_id: 'CMDB-002',
-      app_name: 'payment-app',
+      mp_service_name: 'Payment Processing Service',
+      mp_service_path: '/api/v1/payments',
+      mp_cmdb_id: 'CMDB-002',
+      pd_tech_svc: '',
       prime_manager: '',
       prime_director: '',
       prime_vp: '',
       mse: '',
-      dyna_service_name: 'payment-service-prod',
+      dt_service_name: 'payment-service-prod',
       next_hop_process_group: '',
       next_hop_endpoint: '',
       analysis_status: 'active',
       next_hop_service_code: '',
-      team_name: 'Finance',
-      iris_correlated_problems: '',
-      confirmed: '',
-      tech_svc: '',
-      service_id: 'srv-payment-002',
-      owned_team: 'Finance Team',
+      pd_team_name: 'Finance',
+      integrated_with_pd: '',
+      user_acknowledge: '',
+      dt_service_id: 'srv-payment-002',
+      terraform_onboarding: '',
+      team_name_does_not_exist: '',
+      tech_svc_does_not_exist: '',
+      update_team_name: '',
+      update_tech_svc: '',
       completion: 42,
       lastUpdated: new Date().toISOString(),
     },
     {
       id: 'sample-3',
-      service_name_mp: 'Notification Service',
-      service_path: '',
-      cmdb_id: 'CMDB-003',
-      app_name: 'notification-app',
+      mp_service_name: 'Notification Service',
+      mp_service_path: '',
+      mp_cmdb_id: 'CMDB-003',
+      pd_tech_svc: '',
       prime_manager: 'Alice Brown',
       prime_director: '',
       prime_vp: '',
       mse: 'MSE Team Beta',
-      dyna_service_name: '',
+      dt_service_name: '',
       next_hop_process_group: 'Notification Process Group',
       next_hop_endpoint: '',
       analysis_status: 'maintenance',
       next_hop_service_code: 'NOTIF001',
-      team_name: '',
-      iris_correlated_problems: '',
-      confirmed: 'No',
-      tech_svc: '',
-      service_id: 'srv-notif-003',
-      owned_team: '',
+      pd_team_name: '',
+      integrated_with_pd: '',
+      user_acknowledge: 'No',
+      dt_service_id: 'srv-notif-003',
+      terraform_onboarding: '',
+      team_name_does_not_exist: '',
+      tech_svc_does_not_exist: '',
+      update_team_name: '',
+      update_tech_svc: '',
       completion: 47,
       lastUpdated: new Date().toISOString(),
     },
@@ -395,56 +406,58 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
     const cleanHeader = normalizedHeader.replace(/[^a-z0-9_]/g, '_');
 
     // Map exact header matches first (case-insensitive)
-    if (normalizedHeader === 'service_name_mp' || cleanHeader === 'service_name_mp') {
-      mapping[header] = 'service_name_mp';
-    } else if (normalizedHeader === 'service_path' || cleanHeader === 'service_path') {
-      mapping[header] = 'service_path';
-    } else if (normalizedHeader === 'cmdb_id' || cleanHeader === 'cmdb_id') {
-      mapping[header] = 'cmdb_id';
-    } else if (normalizedHeader === 'app_name' || cleanHeader === 'app_name') {
-      mapping[header] = 'app_name';
-    } else if (normalizedHeader === 'prime_manager' || cleanHeader === 'prime_manager') {
+    if (normalizedHeader === 'mp_service_name' || cleanHeader === 'mp_service_name' || normalizedHeader === 'mp service name') {
+      mapping[header] = 'mp_service_name';
+    } else if (normalizedHeader === 'mp_service_path' || cleanHeader === 'mp_service_path' || normalizedHeader === 'mp service path') {
+      mapping[header] = 'mp_service_path';
+    } else if (normalizedHeader === 'mp_cmdb_id' || cleanHeader === 'mp_cmdb_id' || normalizedHeader === 'mp cmdb id') {
+      mapping[header] = 'mp_cmdb_id';
+    } else if (normalizedHeader === 'pd_tech_svc' || cleanHeader === 'pd_tech_svc' || normalizedHeader === 'pd tech svc') {
+      mapping[header] = 'pd_tech_svc';
+    } else if (normalizedHeader === 'prime_manager' || cleanHeader === 'prime_manager' || normalizedHeader === 'prime manager') {
       mapping[header] = 'prime_manager';
-    } else if (normalizedHeader === 'prime_director' || cleanHeader === 'prime_director') {
+    } else if (normalizedHeader === 'prime_director' || cleanHeader === 'prime_director' || normalizedHeader === 'prime director') {
       mapping[header] = 'prime_director';
-    } else if (normalizedHeader === 'prime_vp' || cleanHeader === 'prime_vp') {
+    } else if (normalizedHeader === 'prime_vp' || cleanHeader === 'prime_vp' || normalizedHeader === 'prime vp') {
       mapping[header] = 'prime_vp';
     } else if (normalizedHeader === 'mse' || cleanHeader === 'mse') {
       mapping[header] = 'mse';
-    } else if (normalizedHeader === 'dyna_service_name' || cleanHeader === 'dyna_service_name' || normalizedHeader === 'dynaservicename' || cleanHeader === 'dynaservicename') {
-      mapping[header] = 'dyna_service_name';
-    } else if (normalizedHeader === 'next_hop_process_group' || cleanHeader === 'next_hop_process_group') {
+    } else if (normalizedHeader === 'dt_service_name' || cleanHeader === 'dt_service_name' || normalizedHeader === 'dt service name') {
+      mapping[header] = 'dt_service_name';
+    } else if (normalizedHeader === 'next_hop_process_group' || cleanHeader === 'next_hop_process_group' || normalizedHeader === 'next hop process group') {
       mapping[header] = 'next_hop_process_group';
-    } else if (normalizedHeader === 'next_hop_endpoint' || cleanHeader === 'next_hop_endpoint') {
+    } else if (normalizedHeader === 'next_hop_endpoint' || cleanHeader === 'next_hop_endpoint' || normalizedHeader === 'next hop endpoint') {
       mapping[header] = 'next_hop_endpoint';
-    } else if (normalizedHeader === 'analysis_status' || cleanHeader === 'analysis_status') {
+    } else if (normalizedHeader === 'analysis_status' || cleanHeader === 'analysis_status' || normalizedHeader === 'analysis status') {
       mapping[header] = 'analysis_status';
-    } else if (normalizedHeader === 'next_hop_service_code' || cleanHeader === 'next_hop_service_code') {
+    } else if (normalizedHeader === 'next_hop_service_code' || cleanHeader === 'next_hop_service_code' || normalizedHeader === 'next hop service code') {
       mapping[header] = 'next_hop_service_code';
-    } else if (normalizedHeader === 'team_name' || cleanHeader === 'team_name') {
-      mapping[header] = 'team_name';
-    } else if (normalizedHeader === 'iris_correlated_problems' || cleanHeader === 'iris_correlated_problems') {
-      mapping[header] = 'iris_correlated_problems';
-    } else if (normalizedHeader === 'confirmed' || cleanHeader === 'confirmed') {
-      mapping[header] = 'confirmed';
-    } else if (normalizedHeader === 'tech_svc' || cleanHeader === 'tech_svc' || normalizedHeader === 'tech-svc' || cleanHeader === 'tech-svc') {
-      mapping[header] = 'tech_svc';
-    } else if (normalizedHeader === 'service_id' || cleanHeader === 'service_id') {
-      mapping[header] = 'service_id';
-    } else if (normalizedHeader === 'owned_team' || cleanHeader === 'owned_team') {
-      mapping[header] = 'owned_team';
-    } else if (normalizedHeader === 'dynatrace_status' || cleanHeader === 'dynatrace_status') {
-      mapping[header] = 'dynatrace_status';
+    } else if (normalizedHeader === 'pd_team_name' || cleanHeader === 'pd_team_name' || normalizedHeader === 'pd team name') {
+      mapping[header] = 'pd_team_name';
+    } else if (normalizedHeader === 'integrated_with_pd' || cleanHeader === 'integrated_with_pd' || normalizedHeader === 'integrated with pd') {
+      mapping[header] = 'integrated_with_pd';
+    } else if (normalizedHeader === 'user_acknowledge' || cleanHeader === 'user_acknowledge' || normalizedHeader === 'user acknowledge') {
+      mapping[header] = 'user_acknowledge';
+    } else if (normalizedHeader === 'dt_service_id' || cleanHeader === 'dt_service_id' || normalizedHeader === 'dt service id') {
+      mapping[header] = 'dt_service_id';
+    } else if (normalizedHeader === 'terraform_onboarding' || cleanHeader === 'terraform_onboarding' || normalizedHeader === 'terraform onboarding') {
+      mapping[header] = 'terraform_onboarding';
+    } else if (normalizedHeader === 'team_name_does_not_exist' || cleanHeader === 'team_name_does_not_exist' || normalizedHeader === 'team name does not exist') {
+      mapping[header] = 'team_name_does_not_exist';
+    } else if (normalizedHeader === 'tech_svc_does_not_exist' || cleanHeader === 'tech_svc_does_not_exist' || normalizedHeader === 'tech svc does not exist') {
+      mapping[header] = 'tech_svc_does_not_exist';
+    } else if (normalizedHeader === 'update_team_name' || cleanHeader === 'update_team_name' || normalizedHeader === 'update team name') {
+      mapping[header] = 'update_team_name';
+    } else if (normalizedHeader === 'update_tech_svc' || cleanHeader === 'update_tech_svc' || normalizedHeader === 'update tech svc') {
+      mapping[header] = 'update_tech_svc';
     }
     // Fallback to partial matching for common variations
     else if (normalizedHeader.includes('service') && (normalizedHeader.includes('name') || normalizedHeader.includes('mp'))) {
-      mapping[header] = 'service_name_mp';
+      mapping[header] = 'mp_service_name';
     } else if (normalizedHeader.includes('service') && normalizedHeader.includes('path')) {
-      mapping[header] = 'service_path';
+      mapping[header] = 'mp_service_path';
     } else if (normalizedHeader.includes('cmdb')) {
-      mapping[header] = 'cmdb_id';
-    } else if (normalizedHeader.includes('app') && normalizedHeader.includes('name')) {
-      mapping[header] = 'app_name';
+      mapping[header] = 'mp_cmdb_id';
     } else if (normalizedHeader.includes('prime') && normalizedHeader.includes('manager')) {
       mapping[header] = 'prime_manager';
     } else if (normalizedHeader.includes('prime') && normalizedHeader.includes('director')) {
@@ -453,10 +466,8 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'prime_vp';
     } else if (normalizedHeader === 'mse' || normalizedHeader.includes('mse')) {
       mapping[header] = 'mse';
-    } else if (normalizedHeader.includes('dyna') && normalizedHeader.includes('service')) {
-      mapping[header] = 'dyna_service_name';
-    } else if (normalizedHeader.includes('dynatrace')) {
-      mapping[header] = 'dyna_service_name';
+    } else if (normalizedHeader.includes('dt') && normalizedHeader.includes('service') && normalizedHeader.includes('name')) {
+      mapping[header] = 'dt_service_name';
     } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('process')) {
       mapping[header] = 'next_hop_process_group';
     } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('endpoint')) {
@@ -465,18 +476,26 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'analysis_status';
     } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('service')) {
       mapping[header] = 'next_hop_service_code';
-    } else if (normalizedHeader.includes('team') && normalizedHeader.includes('name')) {
-      mapping[header] = 'team_name';
-    } else if (normalizedHeader.includes('iris') && normalizedHeader.includes('correlated')) {
-      mapping[header] = 'iris_correlated_problems';
-    } else if (normalizedHeader.includes('confirmed')) {
-      mapping[header] = 'confirmed';
-    } else if (normalizedHeader.includes('tech') && normalizedHeader.includes('svc')) {
-      mapping[header] = 'tech_svc';
-    } else if (normalizedHeader.includes('service') && normalizedHeader.includes('id')) {
-      mapping[header] = 'service_id';
-    } else if (normalizedHeader.includes('owned') && normalizedHeader.includes('team')) {
-      mapping[header] = 'owned_team';
+    } else if (normalizedHeader.includes('pd') && normalizedHeader.includes('team')) {
+      mapping[header] = 'pd_team_name';
+    } else if (normalizedHeader.includes('integrated') && normalizedHeader.includes('pd')) {
+      mapping[header] = 'integrated_with_pd';
+    } else if (normalizedHeader.includes('user') && normalizedHeader.includes('acknowledge')) {
+      mapping[header] = 'user_acknowledge';
+    } else if (normalizedHeader.includes('pd') && normalizedHeader.includes('tech')) {
+      mapping[header] = 'pd_tech_svc';
+    } else if (normalizedHeader.includes('dt') && normalizedHeader.includes('service') && normalizedHeader.includes('id')) {
+      mapping[header] = 'dt_service_id';
+    } else if (normalizedHeader.includes('terraform')) {
+      mapping[header] = 'terraform_onboarding';
+    } else if (normalizedHeader.includes('team') && normalizedHeader.includes('not') && normalizedHeader.includes('exist')) {
+      mapping[header] = 'team_name_does_not_exist';
+    } else if (normalizedHeader.includes('tech') && normalizedHeader.includes('not') && normalizedHeader.includes('exist')) {
+      mapping[header] = 'tech_svc_does_not_exist';
+    } else if (normalizedHeader.includes('update') && normalizedHeader.includes('team')) {
+      mapping[header] = 'update_team_name';
+    } else if (normalizedHeader.includes('update') && normalizedHeader.includes('tech')) {
+      mapping[header] = 'update_tech_svc';
     }
   });
 
@@ -517,7 +536,7 @@ export function validateExcelData(data: ExcelServiceRow[]): { isValid: boolean; 
     if (!row.id) {
       errors.push(`Row ${index + 1}: Missing ID`);
     }
-    if (!row.service_name_mp && !row.api_name) {
+    if (!row.mp_service_name) {
       errors.push(`Row ${index + 1}: Missing service name`);
     }
   });

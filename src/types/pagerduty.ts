@@ -130,27 +130,28 @@ export interface PagerDutyConfig {
 }
 
 export interface ExcelServiceData {
-  service_name_mp?: string;
-  service_path?: string;
-  cmdb_id?: string;
-  app_name?: string;
+  mp_service_name?: string;
+  mp_service_path?: string;
+  mp_cmdb_id?: string;
+  pd_tech_svc?: string;
   prime_manager?: string;
   prime_director?: string;
   prime_vp?: string;
   mse?: string;
-  dyna_service_name?: string;
+  dt_service_name?: string;
   next_hop_process_group?: string;
   next_hop_endpoint?: string;
   analysis_status?: string;
   next_hop_service_code?: string;
-  team_name?: string;
-  iris_correlated_problems?: string;
-  confirmed?: string;
-  tech_svc?: string;
-  service_id?: string;
-  owned_team?: string;
-  excel_data?: string;
-  dynatrace_status?: string;
+  pd_team_name?: string;
+  integrated_with_pd?: string;
+  user_acknowledge?: string;
+  dt_service_id?: string;
+  terraform_onboarding?: string;
+  team_name_does_not_exist?: string;
+  tech_svc_does_not_exist?: string;
+  update_team_name?: string;
+  update_tech_svc?: string;
 }
 
 export interface ExcelServiceRow extends ExcelServiceData {
