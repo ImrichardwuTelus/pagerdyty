@@ -254,10 +254,6 @@ export default function ServiceEditor() {
         if (selectedTechServiceData) {
           excelUpdates.pd_tech_svc = selectedTechServiceData.name;
           excelUpdates.dt_service_id = selectedTechServiceData.id;
-          // If tech service has teams, also update team name
-          if (selectedTechServiceData.teams && selectedTechServiceData.teams.length > 0) {
-            excelUpdates.pd_team_name = selectedTechServiceData.teams[0].summary;
-          }
         }
       } else {
         // Manual tech service entry - flag as doesn't exist
@@ -551,7 +547,7 @@ export default function ServiceEditor() {
                       </h4>
                       <p className="text-sm text-yellow-800 mb-4">
                         Since your team is not found in PagerDuty, please enter the team name
-                        manually. This will be flagged for review.
+                        manually so we can add it to pager duty.
                       </p>
                       <input
                         type="text"
@@ -711,7 +707,7 @@ export default function ServiceEditor() {
                       </h4>
                       <p className="text-sm text-yellow-800 mb-4">
                         Since your technical service is not found in PagerDuty, please enter the
-                        service name manually. This will be flagged for review.
+                        service name manually so we can add it to PagerDuty.
                       </p>
                       <input
                         type="text"
@@ -847,32 +843,6 @@ export default function ServiceEditor() {
                       We'll automatically use your selected PagerDuty service information for
                       Dynatrace integration.
                     </p>
-
-                    {/* Optional override field */}
-                    <div>
-                      <label className="block text-sm font-medium text-green-900 mb-2">
-                        Dynatrace Service Name (optional override):
-                      </label>
-                      <input
-                        type="text"
-                        placeholder={
-                          techServiceFound && selectedTechService
-                            ? `Will use: ${
-                                allServices.find(s => s.id === selectedTechService)?.name ||
-                                'Selected Service'
-                              }`
-                            : manualTechServiceName
-                            ? `Will use: ${manualTechServiceName}`
-                            : 'Enter custom Dynatrace service name...'
-                        }
-                        value={dynatraceServiceName}
-                        onChange={e => setDynatraceServiceName(e.target.value)}
-                        className="w-full px-4 py-3 text-base text-gray-900 bg-white border border-green-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                      />
-                      <p className="text-xs text-green-700 mt-2">
-                        Leave empty to automatically use the selected PagerDuty service name
-                      </p>
-                    </div>
                   </div>
                 )}
 

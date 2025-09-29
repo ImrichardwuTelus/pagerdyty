@@ -173,23 +173,27 @@ export function useExcelData(): UseExcelDataReturn {
   const addRow = useCallback(() => {
     const newRow: ExcelServiceRow = {
       id: `new-row-${Date.now()}`,
-      service_name_mp: 'New Service',
-      service_path: '',
-      cmdb_id: '',
-      api_name: '',
+      mp_service_name: 'New Service',
+      mp_service_path: '',
+      mp_cmdb_id: '',
+      pd_tech_svc: '',
       prime_manager: '',
       prime_director: '',
       prime_vp: '',
       mse: '',
-      dyna_service_name: '',
+      dt_service_name: '',
       next_hop_process_group: '',
       analysis_status: '',
       next_hop_service_code: '',
-      enrichment_status: '',
-      team_name: '',
-      confirmed: '',
-      owned_team: '',
-      service_id: '',
+      pd_team_name: '',
+      integrated_with_pd: '',
+      user_acknowledge: '',
+      dt_service_id: '',
+      terraform_onboarding: '',
+      team_name_does_not_exist: '',
+      tech_svc_does_not_exist: '',
+      update_team_name: '',
+      update_tech_svc: '',
       completion: 4,
       lastUpdated: new Date().toISOString(),
     };
@@ -211,7 +215,7 @@ export function useExcelData(): UseExcelDataReturn {
       const duplicatedRow: ExcelServiceRow = {
         ...rowToDuplicate,
         id: `duplicate-${Date.now()}`,
-        service_name_mp: `${rowToDuplicate.service_name_mp} (Copy)`,
+        mp_service_name: `${rowToDuplicate.mp_service_name} (Copy)`,
         lastUpdated: new Date().toISOString(),
       };
 
@@ -248,8 +252,8 @@ export function useExcelData(): UseExcelDataReturn {
       };
     }
 
-    // Calculate completion for key fields only: team_name, owned_team, service_name_mp, cmdb_id
-    const keyFields = ['team_name', 'owned_team', 'service_name_mp', 'cmdb_id'] as const;
+    // Calculate completion for key fields only: pd_team_name, pd_tech_svc, mp_service_name, mp_cmdb_id
+    const keyFields = ['pd_team_name', 'pd_tech_svc', 'mp_service_name', 'mp_cmdb_id'] as const;
 
     const progressData = data.map(row => {
       const completedKeyFields = keyFields.filter(field => row[field] && String(row[field]).trim() !== '').length;
@@ -259,9 +263,9 @@ export function useExcelData(): UseExcelDataReturn {
     const completed = progressData.filter(completion => completion === 100).length;
     const notStarted = progressData.filter(completion => completion === 0).length;
     const inProgress = data.length - completed - notStarted;
-    const averageCompletion = Math.round(
-      progressData.reduce((sum, completion) => sum + completion, 0) / data.length
-    );
+    const averageCompletion = completed > 0 && completed < data.length
+      ? Math.max(1, Math.round((completed / data.length) * 100))
+      : Math.round((completed / data.length) * 100);
 
     return {
       total: data.length,
