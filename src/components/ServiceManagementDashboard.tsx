@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useExcelData } from '@/hooks/useExcelData';
-import type { ExcelServiceRow } from '@/types/pagerduty';
+import type { ExcelServiceRow, User } from '@/types/pagerduty';
 import { EXCEL_COLUMNS } from '@/lib/excel-utils';
+import { getPagerDutyClient } from '@/lib/pagerduty-client';
 
 interface SortConfig {
   key: keyof ExcelServiceRow | null;
@@ -55,8 +56,28 @@ export default function ServiceManagementDashboard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
 
+  // Prime manager editing state
+  const [showPrimeManagerModal, setShowPrimeManagerModal] = useState(false);
+  const [primeManagerSearch, setPrimeManagerSearch] = useState<string>('');
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingMoreUsers, setLoadingMoreUsers] = useState(false);
+  const [selectedPrimeManager, setSelectedPrimeManager] = useState<string>('');
+  const [hasMoreUsers, setHasMoreUsers] = useState(true);
+  const [currentOffset, setCurrentOffset] = useState(0);
+
+  // User caching state with pagination support
+  const [userCache, setUserCache] = useState<{
+    users: User[];
+    allUserIds: Set<string>; // To track unique users and enable global search
+    totalCount: number;
+    timestamp: number;
+    searchCache: Map<string, User[]>; // Cache search results
+  } | null>(null);
+
   // Progress calculations
   const progress = getOverallProgress();
+
 
   // Get unique values for filters
   const uniqueValues = useMemo(() => {
@@ -199,6 +220,223 @@ export default function ServiceManagementDashboard() {
     setSelectedServices(new Set());
   };
 
+  // Load initial batch of PagerDuty users with caching
+  const loadPagerDutyUsers = useCallback(async (reset = false) => {
+    try {
+      const isInitialLoad = reset || availableUsers.length === 0;
+      if (isInitialLoad) {
+        setLoadingUsers(true);
+        setCurrentOffset(0);
+        setHasMoreUsers(true);
+      } else {
+        setLoadingMoreUsers(true);
+      }
+
+      // Check cache validity (10 minutes)
+      const now = Date.now();
+      const cacheValidDuration = 10 * 60 * 1000;
+      const isCacheValid = userCache && (now - userCache.timestamp) < cacheValidDuration;
+
+      // If we have valid cache and it's initial load, use cached data
+      if (isCacheValid && isInitialLoad && userCache.users.length > 0) {
+        setAvailableUsers(userCache.users);
+        setCurrentOffset(userCache.users.length);
+        setHasMoreUsers(userCache.users.length < userCache.totalCount);
+        setLoadingUsers(false);
+        return;
+      }
+
+      const client = getPagerDutyClient();
+      const limit = 25; // Load 25 users at a time
+      const offset = isInitialLoad ? 0 : currentOffset;
+
+      const response = await client.getUsers({
+        limit,
+        offset,
+        include: ['contact_methods', 'notification_rules']
+      });
+
+      const newUsers = response.users;
+      const hasMore = response.more || false;
+
+      if (isInitialLoad) {
+        // First load or reset
+        setAvailableUsers(newUsers);
+        setUserCache({
+          users: newUsers,
+          allUserIds: new Set(newUsers.map(u => u.id)),
+          totalCount: response.total || newUsers.length,
+          timestamp: now,
+          searchCache: new Map()
+        });
+      } else {
+        // Append to existing users
+        const updatedUsers = [...availableUsers, ...newUsers];
+        setAvailableUsers(updatedUsers);
+
+        if (userCache) {
+          const updatedCache = {
+            ...userCache,
+            users: updatedUsers,
+            allUserIds: new Set([...userCache.allUserIds, ...newUsers.map(u => u.id)]),
+            timestamp: now
+          };
+          setUserCache(updatedCache);
+        }
+      }
+
+      setCurrentOffset(offset + newUsers.length);
+      setHasMoreUsers(hasMore);
+
+    } catch (error) {
+      console.error('Failed to load PagerDuty users:', error);
+      if (reset || availableUsers.length === 0) {
+        setAvailableUsers([]);
+      }
+    } finally {
+      setLoadingUsers(false);
+      setLoadingMoreUsers(false);
+    }
+  }, [userCache, availableUsers.length, currentOffset]);
+
+  // Global search function that searches ALL users via API
+  const searchAllUsers = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim()) {
+      // If no search, load from cache or initial batch
+      if (userCache && userCache.users.length > 0) {
+        setAvailableUsers(userCache.users);
+        setHasMoreUsers(userCache.users.length < userCache.totalCount);
+      } else {
+        loadPagerDutyUsers(true);
+      }
+      return;
+    }
+
+    try {
+      setLoadingUsers(true);
+
+      // Check if we have this search cached
+      if (userCache?.searchCache.has(searchQuery)) {
+        const cachedResults = userCache.searchCache.get(searchQuery)!;
+        setAvailableUsers(cachedResults);
+        setHasMoreUsers(false); // Search results don't have pagination
+        setLoadingUsers(false);
+        return;
+      }
+
+      const client = getPagerDutyClient();
+      const response = await client.getUsers({
+        query: searchQuery,
+        limit: 100, // Get more results for search
+        include: ['contact_methods', 'notification_rules']
+      });
+
+      const searchResults = response.users;
+      setAvailableUsers(searchResults);
+      setHasMoreUsers(false); // Search results don't support infinite scroll
+
+      // Cache the search results
+      if (userCache) {
+        const updatedCache = {
+          ...userCache,
+          searchCache: new Map(userCache.searchCache).set(searchQuery, searchResults)
+        };
+        setUserCache(updatedCache);
+      }
+
+    } catch (error) {
+      console.error('Failed to search users:', error);
+      setAvailableUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [userCache, loadPagerDutyUsers]);
+
+  // Handle opening prime manager modal
+  const handleOpenPrimeManagerModal = useCallback(() => {
+    setShowPrimeManagerModal(true);
+    loadPagerDutyUsers(true);
+  }, [loadPagerDutyUsers]);
+
+  // Handle closing prime manager modal
+  const handleClosePrimeManagerModal = useCallback(() => {
+    setShowPrimeManagerModal(false);
+    setPrimeManagerSearch('');
+    setSelectedPrimeManager('');
+  }, []);
+
+  // Handle prime manager selection
+  const handlePrimeManagerSelect = useCallback((managerName: string) => {
+    setSelectedPrimeManager(managerName);
+  }, []);
+
+  // Handle bulk prime manager update
+  const handleBulkPrimeManagerUpdate = useCallback(async () => {
+    if (!selectedPrimeManager || selectedServices.size === 0) return;
+
+    try {
+      // Update all selected services with the new prime manager
+      selectedServices.forEach(serviceId => {
+        updateCell(serviceId, 'prime_manager', selectedPrimeManager);
+      });
+
+      // Close modal and reset selections
+      handleClosePrimeManagerModal();
+      setSelectedServices(new Set());
+
+      console.log(`Updated prime manager for ${selectedServices.size} services`);
+    } catch (error) {
+      console.error('Failed to update prime manager:', error);
+    }
+  }, [selectedPrimeManager, selectedServices, updateCell, handleClosePrimeManagerModal]);
+
+  // Handle search input change with debouncing for global search
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setPrimeManagerSearch(value);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce the global search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchAllUsers(value);
+    }, 300);
+  }, [searchAllUsers]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handle infinite scroll
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+
+    // Load more when user scrolls to 90% of the content
+    if (scrollPercentage > 0.9 && hasMoreUsers && !loadingMoreUsers && !primeManagerSearch.trim()) {
+      loadPagerDutyUsers(false);
+    }
+  }, [hasMoreUsers, loadingMoreUsers, primeManagerSearch, loadPagerDutyUsers]);
+
+  // Since we're doing global search via API, we don't need client-side filtering
+  const filteredUsers = availableUsers;
+
+  // Memoize user count for performance
+  const userCounts = useMemo(() => ({
+    total: userCache?.totalCount || availableUsers.length,
+    filtered: availableUsers.length,
+    hasSearch: primeManagerSearch.trim().length > 0
+  }), [userCache?.totalCount, availableUsers.length, primeManagerSearch]);
+
 
   const getCompletionColor = (completion: number) => {
     if (completion >= 90) return 'bg-green-500';
@@ -234,6 +472,52 @@ export default function ServiceManagementDashboard() {
       </div>
     );
   };
+
+  // Memoized User List Item Component for better performance
+  const UserListItem = useCallback(({ user, isSelected, onSelect }: {
+    user: User;
+    isSelected: boolean;
+    onSelect: (name: string) => void;
+  }) => (
+    <label
+      className={`flex items-center p-4 m-2 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
+        isSelected
+          ? 'bg-purple-50 border-purple-200 shadow-md'
+          : 'bg-white border-gray-200 hover:border-purple-200 hover:shadow-sm'
+      }`}
+    >
+      <input
+        type="radio"
+        name="primeManager"
+        value={user.name}
+        checked={isSelected}
+        onChange={e => onSelect(e.target.value)}
+        className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300"
+      />
+      <div className="ml-4 flex-1">
+        <div className="font-semibold text-gray-900 flex items-center">
+          {user.name}
+          {isSelected && (
+            <svg className="w-4 h-4 ml-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </div>
+        <div className="text-sm text-gray-600 flex items-center mt-1">
+          <svg className="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+          </svg>
+          {user.email}
+        </div>
+        {user.role && (
+          <div className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full inline-block mt-2">
+            {user.role}
+          </div>
+        )}
+      </div>
+    </label>
+  ), []);
+
 
   // Progress Indicator Component
   const ProgressIndicator = ({ completion }: { completion: number }) => (
@@ -409,8 +693,8 @@ export default function ServiceManagementDashboard() {
               </p>
             </div>
             <div className="px-8 py-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+                <div className="lg:col-span-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Global Search
                   </label>
@@ -437,14 +721,14 @@ export default function ServiceManagementDashboard() {
                       onChange={e =>
                         setFilterConfig(prev => ({ ...prev, searchQuery: e.target.value }))
                       }
-                      className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full h-11 pl-10 pr-3 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                     />
                   </div>
                 </div>
-                <div className="flex items-end space-x-3">
+                <div className="lg:col-span-6 flex flex-wrap gap-3 justify-end">
                   <button
                     onClick={addRow}
-                    className="px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md transition-all duration-200"
+                    className="h-11 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm transition-all duration-200 whitespace-nowrap"
                   >
                     <svg
                       className="w-4 h-4 inline mr-2"
@@ -462,28 +746,49 @@ export default function ServiceManagementDashboard() {
                     Add Service
                   </button>
                   {selectedServices.size > 0 && (
-                    <button
-                      onClick={() => {
-                        const selectedIds = Array.from(selectedServices).join(',');
-                        window.location.href = `/batch-edit?ids=${encodeURIComponent(selectedIds)}`;
-                      }}
-                      className="px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-md transition-all duration-200"
-                    >
-                      <svg
-                        className="w-4 h-4 inline mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                    <>
+                      <button
+                        onClick={() => {
+                          const selectedIds = Array.from(selectedServices).join(',');
+                          window.location.href = `/batch-onboard?ids=${encodeURIComponent(selectedIds)}`;
+                        }}
+                        className="h-11 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm transition-all duration-200 whitespace-nowrap"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      Batch Edit ({selectedServices.size})
-                    </button>
+                        <svg
+                          className="w-4 h-4 inline mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Batch Onboard ({selectedServices.size})
+                      </button>
+                      <button
+                        onClick={handleOpenPrimeManagerModal}
+                        className="h-11 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 shadow-sm transition-all duration-200 whitespace-nowrap"
+                      >
+                        <svg
+                          className="w-4 h-4 inline mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        Edit Prime Manager ({selectedServices.size})
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -497,7 +802,7 @@ export default function ServiceManagementDashboard() {
                     onChange={e =>
                       setFilterConfig(prev => ({ ...prev, serviceNameFilter: e.target.value }))
                     }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full h-11 px-3 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   >
                     <option value="">All Services</option>
                     {uniqueValues.serviceNames.map(name => (
@@ -514,7 +819,7 @@ export default function ServiceManagementDashboard() {
                     onChange={e =>
                       setFilterConfig(prev => ({ ...prev, cmdbIdFilter: e.target.value }))
                     }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full h-11 px-3 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   >
                     <option value="">All CMDB IDs</option>
                     {uniqueValues.cmdbIds.map(id => (
@@ -533,7 +838,7 @@ export default function ServiceManagementDashboard() {
                     onChange={e =>
                       setFilterConfig(prev => ({ ...prev, primeManagerFilter: e.target.value }))
                     }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full h-11 px-3 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   >
                     <option value="">All Managers</option>
                     {uniqueValues.primeManagers.map(manager => (
@@ -552,7 +857,7 @@ export default function ServiceManagementDashboard() {
                     onChange={e =>
                       setFilterConfig(prev => ({ ...prev, primeDirectorFilter: e.target.value }))
                     }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full h-11 px-3 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   >
                     <option value="">All Directors</option>
                     {uniqueValues.primeDirectors.map(director => (
@@ -571,7 +876,7 @@ export default function ServiceManagementDashboard() {
                     onChange={e =>
                       setFilterConfig(prev => ({ ...prev, teamNameFilter: e.target.value }))
                     }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full h-11 px-3 border border-gray-300 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   >
                     <option value="">All Teams</option>
                     {uniqueValues.teamNames.map(team => (
@@ -594,7 +899,7 @@ export default function ServiceManagementDashboard() {
                       teamNameFilter: '',
                     })
                   }
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
+                  className="h-11 px-4 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
                 >
                   <svg
                     className="w-4 h-4 inline mr-2"
@@ -853,12 +1158,12 @@ export default function ServiceManagementDashboard() {
                               row.mp_service_name || 'unnamed-service'
                             );
                             const serviceId = encodeURIComponent(row.dt_service_id || row.id);
-                            window.location.href = `/service-editor/${serviceName}?id=${serviceId}&cmdb=${
+                            window.location.href = `/service-onboard/${serviceName}?id=${serviceId}&cmdb=${
                               row.mp_cmdb_id || ''
                             }&rowId=${row.id}`;
                           }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                          title="Edit service in PagerDuty"
+                          title="Onboard service in PagerDuty"
                         >
                           <svg
                             className="w-3 h-3 mr-1"
@@ -873,7 +1178,7 @@ export default function ServiceManagementDashboard() {
                               d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                             />
                           </svg>
-                          Edit Service
+                          Onboard Service
                         </button>
                       </td>
                     </tr>
@@ -1043,7 +1348,7 @@ export default function ServiceManagementDashboard() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Row</h3>
               <p className="text-sm text-gray-500 mb-6">
@@ -1064,6 +1369,186 @@ export default function ServiceManagementDashboard() {
                   className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Prime Manager Edit Modal */}
+        {showPrimeManagerModal && (
+          <div
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleClosePrimeManagerModal();
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
+              <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
+                      <svg
+                        className="w-6 h-6 mr-3 text-purple-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                      Edit Prime Manager
+                    </h2>
+                    <p className="text-gray-600 mt-2">
+                      Update the prime manager for <span className="font-semibold text-purple-700">{selectedServices.size}</span> selected services
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleClosePrimeManagerModal}
+                    className="p-2 hover:bg-white/60 rounded-lg transition-colors duration-200"
+                  >
+                    <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-8 py-6 space-y-6 overflow-y-auto">
+                {/* Search Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Search PagerDuty Users
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search by name or email..."
+                      value={primeManagerSearch}
+                      onChange={e => handleSearchChange(e.target.value)}
+                      className="w-full h-12 pl-12 pr-4 border border-gray-300 rounded-xl text-sm text-black focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
+                      autoFocus
+                    />
+                    {loadingUsers && (
+                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Users List */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Select Prime Manager
+                      {selectedPrimeManager && (
+                        <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                          Selected
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {userCounts.hasSearch
+                        ? `${userCounts.filtered} results`
+                        : hasMoreUsers
+                          ? `${userCounts.filtered} of ${userCounts.total}+ users`
+                          : `${userCounts.filtered} users`}
+                    </span>
+                  </label>
+
+                  {!loadingUsers && filteredUsers.length === 0 && !primeManagerSearch ? (
+                    <div className="flex items-center justify-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                      <div className="text-center">
+                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">Start searching</h3>
+                        <p className="mt-1 text-sm text-gray-500">Type in the search box to find PagerDuty users</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="space-y-2 max-h-[400px] overflow-y-auto border border-gray-200 rounded-xl bg-gray-50/50 p-2"
+                      onScroll={handleScroll}
+                    >
+                      {filteredUsers.length > 0 ? (
+                        <>
+                          {filteredUsers.map(user => (
+                            <UserListItem
+                              key={user.id}
+                              user={user}
+                              isSelected={selectedPrimeManager === user.name}
+                              onSelect={handlePrimeManagerSelect}
+                            />
+                          ))}
+
+                          {/* Loading more indicator */}
+                          {loadingMoreUsers && (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                              <span className="ml-2 text-sm text-gray-600">Loading more users...</span>
+                            </div>
+                          )}
+
+                          {/* End of results indicator */}
+                          {!hasMoreUsers && !userCounts.hasSearch && filteredUsers.length > 0 && (
+                            <div className="text-center py-4 text-sm text-gray-500">
+                              All users loaded ({filteredUsers.length} total)
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="p-8 text-center text-gray-500">
+                          {primeManagerSearch ? (
+                            <div className="space-y-2">
+                              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <div className="font-medium text-gray-900">No users found</div>
+                              <div>No users match "{primeManagerSearch}". Try a different search term.</div>
+                            </div>
+                          ) : (
+                            'Start typing to search for users...'
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
+                <button
+                  onClick={handleClosePrimeManagerModal}
+                  className="px-6 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkPrimeManagerUpdate}
+                  disabled={!selectedPrimeManager}
+                  className="px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Update {selectedServices.size} Services
                 </button>
               </div>
             </div>

@@ -505,7 +505,6 @@ export function createHeaderMapping(headers: string[]): Record<string, keyof Exc
     }
   });
 
-  console.log('Header mapping created:', mapping);
   return mapping;
 }
 

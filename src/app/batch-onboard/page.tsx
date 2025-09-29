@@ -6,7 +6,7 @@ import { getPagerDutyClient } from '@/lib/pagerduty-client';
 import type { Service, Team, User, ExcelServiceRow } from '@/types/pagerduty';
 import { updateExcelData, writeExcelFile } from '@/lib/excel-utils';
 
-export default function BatchEdit() {
+export default function BatchOnboard() {
   const searchParams = useSearchParams();
   const serviceIds = searchParams.get('ids')?.split(',') || [];
 
@@ -71,7 +71,7 @@ export default function BatchEdit() {
           }
         }
       } catch (error) {
-        console.error('Error setting up batch edit data:', error);
+        console.error('Error setting up batch onboard data:', error);
         setError(error instanceof Error ? error.message : 'Failed to load data');
       } finally {
         setLoading(false);
@@ -81,7 +81,7 @@ export default function BatchEdit() {
     if (serviceIds.length > 0) {
       fetchData();
     } else {
-      setError('No services selected for batch editing');
+      setError('No services selected for batch onboarding');
       setLoading(false);
     }
   }, []);
@@ -169,7 +169,7 @@ export default function BatchEdit() {
           });
 
           if (writeResponse.ok) {
-            console.log(`Batch updated ${serviceIds.length} services successfully`);
+            console.log(`Batch onboarded ${serviceIds.length} services successfully`);
             window.location.href = '/';
           }
         }
@@ -187,7 +187,7 @@ export default function BatchEdit() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading batch edit data...</p>
+          <p className="mt-4 text-gray-600">Loading batch onboard data...</p>
         </div>
       </div>
     );
@@ -211,7 +211,7 @@ export default function BatchEdit() {
             />
           </svg>
           <h1 className="mt-4 text-2xl font-semibold text-gray-900 mb-2">
-            Error Loading Batch Edit
+            Error Loading Batch Onboard
           </h1>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
@@ -234,9 +234,9 @@ export default function BatchEdit() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-4xl font-semibold text-gray-900 tracking-tight">
-                  Batch Edit Services
+                  Batch Onboard Services
                 </h1>
-                <p className="text-lg text-gray-500 mt-2">Editing {serviceIds.length} services</p>
+                <p className="text-lg text-gray-500 mt-2">Onboarding {serviceIds.length} services</p>
               </div>
             </div>
           </div>
@@ -668,7 +668,7 @@ export default function BatchEdit() {
               <div className="space-y-8">
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
                   <h4 className="text-lg font-semibold text-gray-900 mb-6">
-                    Summary of Batch Changes
+                    Summary of Batch Onboarding
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -810,7 +810,7 @@ export default function BatchEdit() {
                   Saving...
                 </>
               ) : (
-                'Save Changes to All Services'
+                'Onboard All Services'
               )}
             </button>
           )}
