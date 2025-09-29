@@ -11,10 +11,7 @@ const EXCEL_FILE_PATH = path.join(process.cwd(), 'public', 'mse_trace_analysis_e
 export async function GET() {
   try {
     if (!fs.existsSync(EXCEL_FILE_PATH)) {
-      return NextResponse.json(
-        { error: 'Excel file not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Excel file not found' }, { status: 404 });
     }
 
     const fileBuffer = fs.readFileSync(EXCEL_FILE_PATH);
@@ -24,10 +21,7 @@ export async function GET() {
     const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
     if (rawData.length === 0) {
-      return NextResponse.json(
-        { error: 'Excel file is empty' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Excel file is empty' }, { status: 400 });
     }
 
     const headers = rawData[0] as string[];
@@ -67,8 +61,8 @@ export async function GET() {
 
         // Calculate completion
         const totalFields = EXCEL_COLUMNS.length;
-        const completedFields = EXCEL_COLUMNS.filter(col =>
-          serviceRow[col.key] && String(serviceRow[col.key]).trim() !== ''
+        const completedFields = EXCEL_COLUMNS.filter(
+          col => serviceRow[col.key] && String(serviceRow[col.key]).trim() !== ''
         ).length;
         serviceRow.completion = Math.round((completedFields / totalFields) * 100);
 
@@ -78,13 +72,16 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: processedData,
-      totalRows: processedData.length
+      totalRows: processedData.length,
     });
-
   } catch (error) {
     console.error('Error reading Excel file:', error);
     return NextResponse.json(
-      { error: `Failed to read Excel file: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      {
+        error: `Failed to read Excel file: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      },
       { status: 500 }
     );
   }
@@ -93,17 +90,18 @@ export async function GET() {
 // POST - Write Excel file
 export async function POST(request: NextRequest) {
   try {
-    const { data, preserveHeaders = false, fileName }: {
-      data: ExcelServiceRow[],
-      preserveHeaders?: boolean,
-      fileName?: string
+    const {
+      data,
+      preserveHeaders = false,
+      fileName,
+    }: {
+      data: ExcelServiceRow[];
+      preserveHeaders?: boolean;
+      fileName?: string;
     } = await request.json();
 
     if (!data || !Array.isArray(data)) {
-      return NextResponse.json(
-        { error: 'Invalid data format' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
     }
 
     // Create workbook
@@ -116,24 +114,22 @@ export async function POST(request: NextRequest) {
       const worksheetData = data.map(row => {
         const excelRow: any = {};
         EXCEL_COLUMNS.forEach(col => {
-          excelRow[col.header] = row[col.key] || '';
+          excelRow[col.key] = row[col.key] || '';
         });
         return excelRow;
       });
 
       worksheet = XLSX.utils.json_to_sheet(worksheetData, {
-        header: EXCEL_COLUMNS.map(col => col.header),
-        skipHeader: false
+        header: EXCEL_COLUMNS.map(col => col.key),
+        skipHeader: false,
       });
     } else {
       // Original array-based approach
       const excelData = [
         // Headers
-        EXCEL_COLUMNS.map(col => col.header),
+        EXCEL_COLUMNS.map(col => col.key),
         // Data rows
-        ...data.map(row =>
-          EXCEL_COLUMNS.map(col => row[col.key] || '')
-        )
+        ...data.map(row => EXCEL_COLUMNS.map(col => row[col.key] || '')),
       ];
 
       worksheet = XLSX.utils.aoa_to_sheet(excelData);
@@ -147,7 +143,7 @@ export async function POST(request: NextRequest) {
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     worksheet['!ref'] = XLSX.utils.encode_range({
       s: { r: 0, c: 0 },
-      e: { r: data.length, c: EXCEL_COLUMNS.length - 1 }
+      e: { r: data.length, c: EXCEL_COLUMNS.length - 1 },
     });
 
     // Add worksheet to workbook
@@ -167,13 +163,16 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Excel file updated successfully',
       updatedRows: data.length,
-      fileName: fileName || 'service_data.xlsx'
+      fileName: fileName || 'service_data.xlsx',
     });
-
   } catch (error) {
     console.error('Error writing Excel file:', error);
     return NextResponse.json(
-      { error: `Failed to write Excel file: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      {
+        error: `Failed to write Excel file: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      },
       { status: 500 }
     );
   }

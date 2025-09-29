@@ -32,6 +32,19 @@ export const EXCEL_COLUMNS: ExcelColumn[] = [
   { key: 'update_tech_svc', header: 'Update Tech SVC', width: 150 },
 ];
 
+/**
+ * Converts internal field keys back to proper Excel headers
+ */
+export function getExcelHeaders(): Record<keyof ExcelServiceRow, string> {
+  const headerMap: Record<string, string> = {};
+
+  EXCEL_COLUMNS.forEach(col => {
+    headerMap[col.key] = col.key; // Use field key instead of display header
+  });
+
+  return headerMap as Record<keyof ExcelServiceRow, string>;
+}
+
 export interface ExcelReadResult {
   data: ExcelServiceRow[];
   success: boolean;
@@ -202,6 +215,7 @@ export async function writeExcelFile(
       },
       body: JSON.stringify({
         data,
+        headers: getExcelHeaders(),
         preserveHeaders: true,
         fileName,
       }),
