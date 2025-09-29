@@ -53,6 +53,7 @@ export default function ServiceManagementDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
 
   // Progress calculations
   const progress = getOverallProgress();
@@ -176,6 +177,28 @@ export default function ServiceManagementDashboard() {
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }));
   };
+
+  const handleSelectService = (serviceId: string) => {
+    setSelectedServices(prev => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(serviceId)) {
+        newSelected.delete(serviceId);
+      } else {
+        newSelected.add(serviceId);
+      }
+      return newSelected;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allFilteredIds = filteredAndSortedData.map(row => row.id);
+    setSelectedServices(new Set(allFilteredIds));
+  };
+
+  const handleUnselectAll = () => {
+    setSelectedServices(new Set());
+  };
+
 
   const getCompletionColor = (completion: number) => {
     if (completion >= 90) return 'bg-green-500';
@@ -418,10 +441,10 @@ export default function ServiceManagementDashboard() {
                     />
                   </div>
                 </div>
-                <div className="flex items-end">
+                <div className="flex items-end space-x-3">
                   <button
                     onClick={addRow}
-                    className="w-full px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md transition-all duration-200"
+                    className="px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md transition-all duration-200"
                   >
                     <svg
                       className="w-4 h-4 inline mr-2"
@@ -438,6 +461,30 @@ export default function ServiceManagementDashboard() {
                     </svg>
                     Add Service
                   </button>
+                  {selectedServices.size > 0 && (
+                    <button
+                      onClick={() => {
+                        const selectedIds = Array.from(selectedServices).join(',');
+                        window.location.href = `/batch-edit?ids=${encodeURIComponent(selectedIds)}`;
+                      }}
+                      className="px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-md transition-all duration-200"
+                    >
+                      <svg
+                        className="w-4 h-4 inline mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                      Batch Edit ({selectedServices.size})
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
@@ -638,6 +685,28 @@ export default function ServiceManagementDashboard() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedServices.size > 0 && selectedServices.size === filteredAndSortedData.length}
+                          ref={(input) => {
+                            if (input) {
+                              input.indeterminate = selectedServices.size > 0 && selectedServices.size < filteredAndSortedData.length;
+                            }
+                          }}
+                          onChange={() => {
+                            if (selectedServices.size === filteredAndSortedData.length) {
+                              handleUnselectAll();
+                            } else {
+                              handleSelectAll();
+                            }
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span>Select</span>
+                      </div>
+                    </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('mp_service_name')}
@@ -721,6 +790,14 @@ export default function ServiceManagementDashboard() {
                       key={row.id}
                       className={`hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                     >
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={selectedServices.has(row.id)}
+                          onChange={() => handleSelectService(row.id)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
                         <DisplayCell
                           value={row.mp_service_name || ''}
@@ -962,6 +1039,7 @@ export default function ServiceManagementDashboard() {
             </div>
           </div>
         )}
+
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
