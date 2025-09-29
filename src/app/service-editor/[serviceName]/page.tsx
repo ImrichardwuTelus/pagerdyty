@@ -38,7 +38,7 @@ export default function ServiceEditor() {
   const [serviceSearchQuery, setServiceSearchQuery] = useState<string>('');
 
   // Dynatrace onboarding state
-  const [wantsDynatraceOnboarding, setWantsDynatraceOnboarding] = useState<boolean | null>(null);
+  const [wantsDynatraceOnboarding, setWantsDynatraceOnboarding] = useState<boolean | null>();
   const [dynatraceServiceName, setDynatraceServiceName] = useState<string>('');
 
   // Final confirmation state
@@ -232,7 +232,8 @@ export default function ServiceEditor() {
       // Prepare update data based on workflow selections
       const excelUpdates: any = {
         user_acknowledge: serviceConfirmed ? 'Yes' : 'No',
-        integrated_with_pd: 'Yes',
+        integrated_with_pd:
+          serviceConfirmed && teamFound !== null && techServiceFound !== null ? 'Yes' : 'No',
       };
 
       // Team data
