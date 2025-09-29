@@ -289,9 +289,6 @@ export function updateExcelData(
 export function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServiceRow> {
   const mapping: Record<string, keyof ExcelServiceRow> = {};
 
-  // Log headers for debugging
-  console.log('Excel headers found:', headers);
-
   headers.forEach(header => {
     const normalizedHeader = header.toLowerCase().trim();
     const cleanHeader = normalizedHeader.replace(/[^a-z0-9_]/g, '_');
