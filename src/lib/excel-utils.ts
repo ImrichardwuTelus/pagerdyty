@@ -62,22 +62,23 @@ export async function readLocalExcelFile(fileName: string): Promise<ExcelReadRes
         data: [],
         success: false,
         error: result.error || 'Failed to read Excel file',
-        totalRows: 0
+        totalRows: 0,
       };
     }
 
     return {
       data: result.data,
       success: true,
-      totalRows: result.totalRows
+      totalRows: result.totalRows,
     };
-
   } catch (error) {
     return {
       data: [],
       success: false,
-      error: `Failed to read Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      totalRows: 0
+      error: `Failed to read Excel file: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`,
+      totalRows: 0,
     };
   }
 }
@@ -86,11 +87,11 @@ export async function readLocalExcelFile(fileName: string): Promise<ExcelReadRes
  * Reads data from an Excel file
  */
 export function readExcelFile(file: File): Promise<ExcelReadResult> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     try {
       const reader = new FileReader();
 
-      reader.onload = (e) => {
+      reader.onload = e => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
@@ -107,7 +108,7 @@ export function readExcelFile(file: File): Promise<ExcelReadResult> {
               data: [],
               success: false,
               error: 'Excel file is empty',
-              totalRows: 0
+              totalRows: 0,
             });
             return;
           }
@@ -140,8 +141,8 @@ export function readExcelFile(file: File): Promise<ExcelReadResult> {
               });
 
               // Calculate completion percentage
-              const completedFields = EXCEL_COLUMNS.filter(col =>
-                rowData[col.key] && String(rowData[col.key]).trim() !== ''
+              const completedFields = EXCEL_COLUMNS.filter(
+                col => rowData[col.key] && String(rowData[col.key]).trim() !== ''
               ).length;
               rowData.completion = Math.round((completedFields / EXCEL_COLUMNS.length) * 100);
 
@@ -151,15 +152,16 @@ export function readExcelFile(file: File): Promise<ExcelReadResult> {
           resolve({
             data: excelData,
             success: true,
-            totalRows: excelData.length
+            totalRows: excelData.length,
           });
-
         } catch (parseError) {
           resolve({
             data: [],
             success: false,
-            error: `Failed to parse Excel file: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
-            totalRows: 0
+            error: `Failed to parse Excel file: ${
+              parseError instanceof Error ? parseError.message : 'Unknown error'
+            }`,
+            totalRows: 0,
           });
         }
       };
@@ -169,7 +171,7 @@ export function readExcelFile(file: File): Promise<ExcelReadResult> {
           data: [],
           success: false,
           error: 'Failed to read file',
-          totalRows: 0
+          totalRows: 0,
         });
       };
 
@@ -179,7 +181,7 @@ export function readExcelFile(file: File): Promise<ExcelReadResult> {
         data: [],
         success: false,
         error: `File reading error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        totalRows: 0
+        totalRows: 0,
       });
     }
   });
@@ -188,7 +190,10 @@ export function readExcelFile(file: File): Promise<ExcelReadResult> {
 /**
  * Writes data to the Excel file on the server
  */
-export async function writeExcelFile(data: ExcelServiceRow[], fileName: string = 'service_data.xlsx'): Promise<ExcelWriteResult> {
+export async function writeExcelFile(
+  data: ExcelServiceRow[],
+  fileName: string = 'service_data.xlsx'
+): Promise<ExcelWriteResult> {
   try {
     const response = await fetch('/api/excel', {
       method: 'POST',
@@ -198,7 +203,7 @@ export async function writeExcelFile(data: ExcelServiceRow[], fileName: string =
       body: JSON.stringify({
         data,
         preserveHeaders: true,
-        fileName
+        fileName,
       }),
     });
 
@@ -211,169 +216,22 @@ export async function writeExcelFile(data: ExcelServiceRow[], fileName: string =
     if (!result.success) {
       return {
         success: false,
-        error: result.error || 'Failed to write Excel file'
+        error: result.error || 'Failed to write Excel file',
       };
     }
 
     return {
       success: true,
-      fileName: fileName
+      fileName: fileName,
     };
   } catch (error) {
     return {
       success: false,
-      error: `Failed to write Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Failed to write Excel file: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`,
     };
   }
-}
-
-/**
- * Writes data to an Excel file and downloads it (legacy function)
- */
-export function downloadExcelFile(data: ExcelServiceRow[], fileName: string = 'service_data.xlsx'): ExcelWriteResult {
-  try {
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
-
-    // Prepare data for Excel with consistent headers
-    const headers = EXCEL_COLUMNS.map(col => col.header);
-    const dataRows = data.map(row =>
-      EXCEL_COLUMNS.map(col => row[col.key] || '')
-    );
-
-    // Create worksheet from JSON to preserve column structure
-    const worksheetData = data.map(row => {
-      const excelRow: any = {};
-      EXCEL_COLUMNS.forEach(col => {
-        excelRow[col.header] = row[col.key] || '';
-      });
-      return excelRow;
-    });
-
-    // Create worksheet using json_to_sheet to maintain column order
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData, {
-      header: headers,
-      skipHeader: false
-    });
-
-    // Set column widths
-    const columnWidths = EXCEL_COLUMNS.map(col => ({ wch: Math.floor((col.width || 100) / 7) }));
-    worksheet['!cols'] = columnWidths;
-
-    // Ensure headers are preserved by setting the range
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-    worksheet['!ref'] = XLSX.utils.encode_range({
-      s: { r: 0, c: 0 },
-      e: { r: data.length, c: EXCEL_COLUMNS.length - 1 }
-    });
-
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Service Data');
-
-    // Write file
-    XLSX.writeFile(workbook, fileName);
-
-    return {
-      success: true,
-      fileName
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: `Failed to export Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
-  }
-}
-
-/**
- * Creates sample Excel data for testing
- */
-export function createSampleExcelData(): ExcelServiceRow[] {
-  const sampleData: ExcelServiceRow[] = [
-    {
-      id: 'sample-1',
-      mp_service_name: 'User Authentication Service',
-      mp_service_path: '/api/v1/auth',
-      mp_cmdb_id: 'CMDB-001',
-      pd_tech_svc: 'AUTH-SVC-001',
-      prime_manager: 'John Doe',
-      prime_director: 'Jane Smith',
-      prime_vp: 'Bob Johnson',
-      mse: 'MSE Team Alpha',
-      dt_service_name: 'auth-service-prod',
-      next_hop_process_group: 'Authentication Process Group',
-      next_hop_endpoint: 'https://auth.example.com/api',
-      analysis_status: 'active',
-      next_hop_service_code: 'AUTH001',
-      pd_team_name: 'Engineering',
-      integrated_with_pd: 'Yes',
-      user_acknowledge: 'Yes',
-      dt_service_id: 'srv-auth-001',
-      terraform_onboarding: 'Yes',
-      team_name_does_not_exist: 'No',
-      tech_svc_does_not_exist: 'No',
-      update_team_name: 'No',
-      update_tech_svc: 'No',
-      completion: 100,
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: 'sample-2',
-      mp_service_name: 'Payment Processing Service',
-      mp_service_path: '/api/v1/payments',
-      mp_cmdb_id: 'CMDB-002',
-      pd_tech_svc: '',
-      prime_manager: '',
-      prime_director: '',
-      prime_vp: '',
-      mse: '',
-      dt_service_name: 'payment-service-prod',
-      next_hop_process_group: '',
-      next_hop_endpoint: '',
-      analysis_status: 'active',
-      next_hop_service_code: '',
-      pd_team_name: 'Finance',
-      integrated_with_pd: '',
-      user_acknowledge: '',
-      dt_service_id: 'srv-payment-002',
-      terraform_onboarding: '',
-      team_name_does_not_exist: '',
-      tech_svc_does_not_exist: '',
-      update_team_name: '',
-      update_tech_svc: '',
-      completion: 42,
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: 'sample-3',
-      mp_service_name: 'Notification Service',
-      mp_service_path: '',
-      mp_cmdb_id: 'CMDB-003',
-      pd_tech_svc: '',
-      prime_manager: 'Alice Brown',
-      prime_director: '',
-      prime_vp: '',
-      mse: 'MSE Team Beta',
-      dt_service_name: '',
-      next_hop_process_group: 'Notification Process Group',
-      next_hop_endpoint: '',
-      analysis_status: 'maintenance',
-      next_hop_service_code: 'NOTIF001',
-      pd_team_name: '',
-      integrated_with_pd: '',
-      user_acknowledge: 'No',
-      dt_service_id: 'srv-notif-003',
-      terraform_onboarding: '',
-      team_name_does_not_exist: '',
-      tech_svc_does_not_exist: '',
-      update_team_name: '',
-      update_tech_svc: '',
-      completion: 47,
-      lastUpdated: new Date().toISOString(),
-    },
-  ];
-
-  return sampleData;
 }
 
 /**
@@ -414,7 +272,7 @@ export function updateExcelData(
 /**
  * Creates header mapping from Excel headers to our field keys
  */
-function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServiceRow> {
+export function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServiceRow> {
   const mapping: Record<string, keyof ExcelServiceRow> = {};
 
   // Log headers for debugging
@@ -425,53 +283,140 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
     const cleanHeader = normalizedHeader.replace(/[^a-z0-9_]/g, '_');
 
     // Map exact header matches first (case-insensitive)
-    if (normalizedHeader === 'mp_service_name' || cleanHeader === 'mp_service_name' || normalizedHeader === 'mp service name') {
+    if (
+      normalizedHeader === 'mp_service_name' ||
+      cleanHeader === 'mp_service_name' ||
+      normalizedHeader === 'mp service name'
+    ) {
       mapping[header] = 'mp_service_name';
-    } else if (normalizedHeader === 'mp_service_path' || cleanHeader === 'mp_service_path' || normalizedHeader === 'mp service path') {
+    } else if (
+      normalizedHeader === 'mp_service_path' ||
+      cleanHeader === 'mp_service_path' ||
+      normalizedHeader === 'mp service path'
+    ) {
       mapping[header] = 'mp_service_path';
-    } else if (normalizedHeader === 'mp_cmdb_id' || cleanHeader === 'mp_cmdb_id' || normalizedHeader === 'mp cmdb id') {
+    } else if (
+      normalizedHeader === 'mp_cmdb_id' ||
+      cleanHeader === 'mp_cmdb_id' ||
+      normalizedHeader === 'mp cmdb id'
+    ) {
       mapping[header] = 'mp_cmdb_id';
-    } else if (normalizedHeader === 'pd_tech_svc' || cleanHeader === 'pd_tech_svc' || normalizedHeader === 'pd tech svc') {
+    } else if (
+      normalizedHeader === 'pd_tech_svc' ||
+      cleanHeader === 'pd_tech_svc' ||
+      normalizedHeader === 'pd tech svc'
+    ) {
       mapping[header] = 'pd_tech_svc';
-    } else if (normalizedHeader === 'prime_manager' || cleanHeader === 'prime_manager' || normalizedHeader === 'prime manager') {
+    } else if (
+      normalizedHeader === 'prime_manager' ||
+      cleanHeader === 'prime_manager' ||
+      normalizedHeader === 'prime manager'
+    ) {
       mapping[header] = 'prime_manager';
-    } else if (normalizedHeader === 'prime_director' || cleanHeader === 'prime_director' || normalizedHeader === 'prime director') {
+    } else if (
+      normalizedHeader === 'prime_director' ||
+      cleanHeader === 'prime_director' ||
+      normalizedHeader === 'prime director'
+    ) {
       mapping[header] = 'prime_director';
-    } else if (normalizedHeader === 'prime_vp' || cleanHeader === 'prime_vp' || normalizedHeader === 'prime vp') {
+    } else if (
+      normalizedHeader === 'prime_vp' ||
+      cleanHeader === 'prime_vp' ||
+      normalizedHeader === 'prime vp'
+    ) {
       mapping[header] = 'prime_vp';
     } else if (normalizedHeader === 'mse' || cleanHeader === 'mse') {
       mapping[header] = 'mse';
-    } else if (normalizedHeader === 'dt_service_name' || cleanHeader === 'dt_service_name' || normalizedHeader === 'dt service name') {
+    } else if (
+      normalizedHeader === 'dt_service_name' ||
+      cleanHeader === 'dt_service_name' ||
+      normalizedHeader === 'dt service name'
+    ) {
       mapping[header] = 'dt_service_name';
-    } else if (normalizedHeader === 'next_hop_process_group' || cleanHeader === 'next_hop_process_group' || normalizedHeader === 'next hop process group') {
+    } else if (
+      normalizedHeader === 'next_hop_process_group' ||
+      cleanHeader === 'next_hop_process_group' ||
+      normalizedHeader === 'next hop process group'
+    ) {
       mapping[header] = 'next_hop_process_group';
-    } else if (normalizedHeader === 'next_hop_endpoint' || cleanHeader === 'next_hop_endpoint' || normalizedHeader === 'next hop endpoint') {
+    } else if (
+      normalizedHeader === 'next_hop_endpoint' ||
+      cleanHeader === 'next_hop_endpoint' ||
+      normalizedHeader === 'next hop endpoint'
+    ) {
       mapping[header] = 'next_hop_endpoint';
-    } else if (normalizedHeader === 'analysis_status' || cleanHeader === 'analysis_status' || normalizedHeader === 'analysis status') {
+    } else if (
+      normalizedHeader === 'analysis_status' ||
+      cleanHeader === 'analysis_status' ||
+      normalizedHeader === 'analysis status'
+    ) {
       mapping[header] = 'analysis_status';
-    } else if (normalizedHeader === 'next_hop_service_code' || cleanHeader === 'next_hop_service_code' || normalizedHeader === 'next hop service code') {
+    } else if (
+      normalizedHeader === 'next_hop_service_code' ||
+      cleanHeader === 'next_hop_service_code' ||
+      normalizedHeader === 'next hop service code'
+    ) {
       mapping[header] = 'next_hop_service_code';
-    } else if (normalizedHeader === 'pd_team_name' || cleanHeader === 'pd_team_name' || normalizedHeader === 'pd team name') {
+    } else if (
+      normalizedHeader === 'pd_team_name' ||
+      cleanHeader === 'pd_team_name' ||
+      normalizedHeader === 'pd team name'
+    ) {
       mapping[header] = 'pd_team_name';
-    } else if (normalizedHeader === 'integrated_with_pd' || cleanHeader === 'integrated_with_pd' || normalizedHeader === 'integrated with pd') {
+    } else if (
+      normalizedHeader === 'integrated_with_pd' ||
+      cleanHeader === 'integrated_with_pd' ||
+      normalizedHeader === 'integrated with pd'
+    ) {
       mapping[header] = 'integrated_with_pd';
-    } else if (normalizedHeader === 'user_acknowledge' || cleanHeader === 'user_acknowledge' || normalizedHeader === 'user acknowledge') {
+    } else if (
+      normalizedHeader === 'user_acknowledge' ||
+      cleanHeader === 'user_acknowledge' ||
+      normalizedHeader === 'user acknowledge'
+    ) {
       mapping[header] = 'user_acknowledge';
-    } else if (normalizedHeader === 'dt_service_id' || cleanHeader === 'dt_service_id' || normalizedHeader === 'dt service id') {
+    } else if (
+      normalizedHeader === 'dt_service_id' ||
+      cleanHeader === 'dt_service_id' ||
+      normalizedHeader === 'dt service id'
+    ) {
       mapping[header] = 'dt_service_id';
-    } else if (normalizedHeader === 'terraform_onboarding' || cleanHeader === 'terraform_onboarding' || normalizedHeader === 'terraform onboarding') {
+    } else if (
+      normalizedHeader === 'terraform_onboarding' ||
+      cleanHeader === 'terraform_onboarding' ||
+      normalizedHeader === 'terraform onboarding'
+    ) {
       mapping[header] = 'terraform_onboarding';
-    } else if (normalizedHeader === 'team_name_does_not_exist' || cleanHeader === 'team_name_does_not_exist' || normalizedHeader === 'team name does not exist') {
+    } else if (
+      normalizedHeader === 'team_name_does_not_exist' ||
+      cleanHeader === 'team_name_does_not_exist' ||
+      normalizedHeader === 'team name does not exist'
+    ) {
       mapping[header] = 'team_name_does_not_exist';
-    } else if (normalizedHeader === 'tech_svc_does_not_exist' || cleanHeader === 'tech_svc_does_not_exist' || normalizedHeader === 'tech svc does not exist') {
+    } else if (
+      normalizedHeader === 'tech_svc_does_not_exist' ||
+      cleanHeader === 'tech_svc_does_not_exist' ||
+      normalizedHeader === 'tech svc does not exist'
+    ) {
       mapping[header] = 'tech_svc_does_not_exist';
-    } else if (normalizedHeader === 'update_team_name' || cleanHeader === 'update_team_name' || normalizedHeader === 'update team name') {
+    } else if (
+      normalizedHeader === 'update_team_name' ||
+      cleanHeader === 'update_team_name' ||
+      normalizedHeader === 'update team name'
+    ) {
       mapping[header] = 'update_team_name';
-    } else if (normalizedHeader === 'update_tech_svc' || cleanHeader === 'update_tech_svc' || normalizedHeader === 'update tech svc') {
+    } else if (
+      normalizedHeader === 'update_tech_svc' ||
+      cleanHeader === 'update_tech_svc' ||
+      normalizedHeader === 'update tech svc'
+    ) {
       mapping[header] = 'update_tech_svc';
     }
     // Fallback to partial matching for common variations
-    else if (normalizedHeader.includes('service') && (normalizedHeader.includes('name') || normalizedHeader.includes('mp'))) {
+    else if (
+      normalizedHeader.includes('service') &&
+      (normalizedHeader.includes('name') || normalizedHeader.includes('mp'))
+    ) {
       mapping[header] = 'mp_service_name';
     } else if (normalizedHeader.includes('service') && normalizedHeader.includes('path')) {
       mapping[header] = 'mp_service_path';
@@ -485,15 +430,31 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'prime_vp';
     } else if (normalizedHeader === 'mse' || normalizedHeader.includes('mse')) {
       mapping[header] = 'mse';
-    } else if (normalizedHeader.includes('dt') && normalizedHeader.includes('service') && normalizedHeader.includes('name')) {
+    } else if (
+      normalizedHeader.includes('dt') &&
+      normalizedHeader.includes('service') &&
+      normalizedHeader.includes('name')
+    ) {
       mapping[header] = 'dt_service_name';
-    } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('process')) {
+    } else if (
+      normalizedHeader.includes('next') &&
+      normalizedHeader.includes('hop') &&
+      normalizedHeader.includes('process')
+    ) {
       mapping[header] = 'next_hop_process_group';
-    } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('endpoint')) {
+    } else if (
+      normalizedHeader.includes('next') &&
+      normalizedHeader.includes('hop') &&
+      normalizedHeader.includes('endpoint')
+    ) {
       mapping[header] = 'next_hop_endpoint';
     } else if (normalizedHeader.includes('analysis') && normalizedHeader.includes('status')) {
       mapping[header] = 'analysis_status';
-    } else if (normalizedHeader.includes('next') && normalizedHeader.includes('hop') && normalizedHeader.includes('service')) {
+    } else if (
+      normalizedHeader.includes('next') &&
+      normalizedHeader.includes('hop') &&
+      normalizedHeader.includes('service')
+    ) {
       mapping[header] = 'next_hop_service_code';
     } else if (normalizedHeader.includes('pd') && normalizedHeader.includes('team')) {
       mapping[header] = 'pd_team_name';
@@ -503,13 +464,25 @@ function createHeaderMapping(headers: string[]): Record<string, keyof ExcelServi
       mapping[header] = 'user_acknowledge';
     } else if (normalizedHeader.includes('pd') && normalizedHeader.includes('tech')) {
       mapping[header] = 'pd_tech_svc';
-    } else if (normalizedHeader.includes('dt') && normalizedHeader.includes('service') && normalizedHeader.includes('id')) {
+    } else if (
+      normalizedHeader.includes('dt') &&
+      normalizedHeader.includes('service') &&
+      normalizedHeader.includes('id')
+    ) {
       mapping[header] = 'dt_service_id';
     } else if (normalizedHeader.includes('terraform')) {
       mapping[header] = 'terraform_onboarding';
-    } else if (normalizedHeader.includes('team') && normalizedHeader.includes('not') && normalizedHeader.includes('exist')) {
+    } else if (
+      normalizedHeader.includes('team') &&
+      normalizedHeader.includes('not') &&
+      normalizedHeader.includes('exist')
+    ) {
       mapping[header] = 'team_name_does_not_exist';
-    } else if (normalizedHeader.includes('tech') && normalizedHeader.includes('not') && normalizedHeader.includes('exist')) {
+    } else if (
+      normalizedHeader.includes('tech') &&
+      normalizedHeader.includes('not') &&
+      normalizedHeader.includes('exist')
+    ) {
       mapping[header] = 'tech_svc_does_not_exist';
     } else if (normalizedHeader.includes('update') && normalizedHeader.includes('team')) {
       mapping[header] = 'update_team_name';
@@ -562,6 +535,6 @@ export function validateExcelData(data: ExcelServiceRow[]): { isValid: boolean; 
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }

@@ -6,7 +6,6 @@ import {
   readExcelFile,
   readLocalExcelFile,
   writeExcelFile,
-  createSampleExcelData,
   updateExcelData,
   calculateRowCompletion,
   validateExcelData,
@@ -32,7 +31,6 @@ interface UseExcelDataReturn {
   loadExcelFile: (file: File) => Promise<void>;
   loadLocalExcelFile: (fileName: string) => Promise<void>;
   saveExcelFile: (fileName?: string) => Promise<void>;
-  loadSampleData: () => void;
 
   // Data operations
   updateCell: (rowId: string, field: keyof ExcelServiceRow, value: string) => void;
@@ -155,14 +153,6 @@ export function useExcelData(): UseExcelDataReturn {
       setSaving(false);
     }
   }, [data]);
-
-  // Load sample data
-  const loadSampleData = useCallback(() => {
-    const sampleData = createSampleExcelData();
-    setData(sampleData);
-    setOriginalData([...sampleData]);
-    setError(null);
-  }, []);
 
   // Update cell value
   const updateCell = useCallback((rowId: string, field: keyof ExcelServiceRow, value: string) => {
@@ -294,7 +284,6 @@ export function useExcelData(): UseExcelDataReturn {
     loadExcelFile,
     loadLocalExcelFile,
     saveExcelFile,
-    loadSampleData,
 
     // Data operations
     updateCell,
