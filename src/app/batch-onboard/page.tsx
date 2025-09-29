@@ -94,6 +94,7 @@ export default function BatchOnboard() {
         user_acknowledge: serviceConfirmed ? 'Yes' : 'No',
         integrated_with_pd:
           serviceConfirmed && teamFound !== null && techServiceFound !== null ? 'Yes' : 'No',
+        internal_status: 'pending', // Set status to pending when user submits onboarding
       };
 
       // Team data

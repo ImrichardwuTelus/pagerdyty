@@ -131,14 +131,13 @@ export interface PagerDutyConfig {
 
 export interface ExcelServiceData {
   mp_service_name?: string;
-  mp_service_path?: string;
+  dt_service_name?: string;
   mp_cmdb_id?: string;
   pd_tech_svc?: string;
   prime_manager?: string;
   prime_director?: string;
   prime_vp?: string;
   mse?: string;
-  dt_service_name?: string;
   next_hop_process_group?: string;
   next_hop_endpoint?: string;
   analysis_status?: string;
@@ -152,6 +151,7 @@ export interface ExcelServiceData {
   tech_svc_does_not_exist?: string;
   update_team_name?: string;
   update_tech_svc?: string;
+  internal_status?: string;
 }
 
 export interface ExcelServiceRow extends ExcelServiceData {

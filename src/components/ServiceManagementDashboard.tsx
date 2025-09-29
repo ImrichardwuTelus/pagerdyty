@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useExcelData } from '@/hooks/useExcelData';
 import type { ExcelServiceRow, User } from '@/types/pagerduty';
-import { EXCEL_COLUMNS } from '@/lib/excel-utils';
+import { EXCEL_COLUMNS, updateExcelData } from '@/lib/excel-utils';
 import { getPagerDutyClient } from '@/lib/pagerduty-client';
 
 interface SortConfig {
@@ -380,6 +380,56 @@ export default function ServiceManagementDashboard() {
         updateCell(serviceId, 'prime_manager', selectedPrimeManager);
       });
 
+      // Write changes directly to Excel file via API (like service-onboard does)
+      const response = await fetch('/api/excel');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          let currentExcelData: ExcelServiceRow[] = result.data;
+
+          // Apply prime manager updates to all selected services
+          selectedServices.forEach(serviceId => {
+            currentExcelData = updateExcelData(
+              currentExcelData,
+              serviceId,
+              'prime_manager',
+              selectedPrimeManager
+            );
+          });
+
+          // Write the updated data back to Excel file
+          const writeResponse = await fetch('/api/excel', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              data: currentExcelData,
+              preserveHeaders: true,
+              fileName: 'service_data.xlsx',
+            }),
+          });
+
+          if (writeResponse.ok) {
+            const writeResult = await writeResponse.json();
+            if (writeResult.success) {
+              console.log(`Prime manager updated for ${selectedServices.size} services successfully`);
+
+              // Reload the Excel data to sync with the server
+              await loadLocalExcelFile('service_data.xlsx');
+            } else {
+              console.error('Failed to write Excel data:', writeResult.error);
+            }
+          } else {
+            console.error('Failed to write Excel data - HTTP error:', writeResponse.statusText);
+          }
+        } else {
+          console.error('Failed to read Excel data:', result.error);
+        }
+      } else {
+        console.error('Failed to read Excel data - HTTP error:', response.statusText);
+      }
+
       // Close modal and reset selections
       handleClosePrimeManagerModal();
       setSelectedServices(new Set());
@@ -388,7 +438,7 @@ export default function ServiceManagementDashboard() {
     } catch (error) {
       console.error('Failed to update prime manager:', error);
     }
-  }, [selectedPrimeManager, selectedServices, updateCell, handleClosePrimeManagerModal]);
+  }, [selectedPrimeManager, selectedServices, updateCell, updateExcelData, loadLocalExcelFile, handleClosePrimeManagerModal]);
 
   // Handle search input change with debouncing for global search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1084,6 +1134,15 @@ export default function ServiceManagementDashboard() {
                         <SortIcon column={'prime_director'} />
                       </div>
                     </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('internal_status')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Internal Status</span>
+                        <SortIcon column={'internal_status'} />
+                      </div>
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
                       Actions
                     </th>
@@ -1150,6 +1209,21 @@ export default function ServiceManagementDashboard() {
                           value={row.prime_director || ''}
                           className="text-sm text-gray-900"
                         />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap border-r border-gray-200">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            row.internal_status === 'complete'
+                              ? 'bg-green-100 text-green-800'
+                              : row.internal_status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : row.internal_status === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {row.internal_status || '—'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <button

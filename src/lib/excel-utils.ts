@@ -8,28 +8,28 @@ export interface ExcelColumn {
 }
 
 export const EXCEL_COLUMNS: ExcelColumn[] = [
-  { key: 'mp_service_name', header: 'MP Service Name', width: 200 },
-  { key: 'mp_service_path', header: 'MP Service Path', width: 150 },
-  { key: 'mp_cmdb_id', header: 'MP CMDB ID', width: 120 },
-  { key: 'pd_tech_svc', header: 'PD Tech SVC', width: 120 },
-  { key: 'prime_manager', header: 'Prime Manager', width: 150 },
-  { key: 'prime_director', header: 'Prime Director', width: 150 },
-  { key: 'prime_vp', header: 'Prime VP', width: 120 },
-  { key: 'mse', header: 'MSE', width: 100 },
-  { key: 'dt_service_name', header: 'DT Service Name', width: 150 },
-  { key: 'next_hop_process_group', header: 'Next Hop Process Group', width: 180 },
-  { key: 'next_hop_endpoint', header: 'Next Hop Endpoint', width: 170 },
-  { key: 'analysis_status', header: 'Analysis Status', width: 130 },
-  { key: 'next_hop_service_code', header: 'Next Hop Service Code', width: 170 },
-  { key: 'pd_team_name', header: 'PD Team Name', width: 120 },
-  { key: 'integrated_with_pd', header: 'Integrated with PD', width: 180 },
-  { key: 'user_acknowledge', header: 'User Acknowledge', width: 120 },
-  { key: 'dt_service_id', header: 'DT Service ID', width: 120 },
-  { key: 'terraform_onboarding', header: 'Terraform Onboarding', width: 150 },
-  { key: 'team_name_does_not_exist', header: 'Team Name Does Not Exist', width: 180 },
-  { key: 'tech_svc_does_not_exist', header: 'Tech SVC Does Not Exist', width: 180 },
-  { key: 'update_team_name', header: 'Update Team Name', width: 150 },
-  { key: 'update_tech_svc', header: 'Update Tech SVC', width: 150 },
+  { key: 'mp_service_name', header: 'mp_service_name', width: 200 },
+  { key: 'dt_service_name', header: 'dt_service_name', width: 150 },
+  { key: 'mp_cmdb_id', header: 'mp_cmdb_id', width: 120 },
+  { key: 'pd_tech_svc', header: 'pd_tech_svc', width: 120 },
+  { key: 'prime_manager', header: 'prime_manager', width: 150 },
+  { key: 'prime_director', header: 'prime_director', width: 150 },
+  { key: 'prime_vp', header: 'prime_vp', width: 120 },
+  { key: 'mse', header: 'mse', width: 100 },
+  { key: 'next_hop_process_group', header: 'next_hop_process_group', width: 180 },
+  { key: 'next_hop_endpoint', header: 'next_hop_endpoint', width: 170 },
+  { key: 'analysis_status', header: 'analysis_status', width: 130 },
+  { key: 'next_hop_service_code', header: 'next_hop_service_code', width: 170 },
+  { key: 'pd_team_name', header: 'pd_team_name', width: 120 },
+  { key: 'integrated_with_pd', header: 'integrated_with_pd', width: 180 },
+  { key: 'user_acknowledge', header: 'user_acknowledge', width: 120 },
+  { key: 'dt_service_id', header: 'dt_service_id', width: 120 },
+  { key: 'terraform_onboarding', header: 'terraform_onboarding', width: 150 },
+  { key: 'team_name_does_not_exist', header: 'team_name_does_not_exist', width: 180 },
+  { key: 'tech_svc_does_not_exist', header: 'tech_svc_does_not_exist', width: 180 },
+  { key: 'update_team_name', header: 'update_team_name', width: 150 },
+  { key: 'update_tech_svc', header: 'update_tech_svc', width: 150 },
+  { key: 'internal_status', header: 'internal_status', width: 120 },
 ];
 
 /**
@@ -304,12 +304,6 @@ export function createHeaderMapping(headers: string[]): Record<string, keyof Exc
     ) {
       mapping[header] = 'mp_service_name';
     } else if (
-      normalizedHeader === 'mp_service_path' ||
-      cleanHeader === 'mp_service_path' ||
-      normalizedHeader === 'mp service path'
-    ) {
-      mapping[header] = 'mp_service_path';
-    } else if (
       normalizedHeader === 'mp_cmdb_id' ||
       cleanHeader === 'mp_cmdb_id' ||
       normalizedHeader === 'mp cmdb id'
@@ -425,6 +419,12 @@ export function createHeaderMapping(headers: string[]): Record<string, keyof Exc
       normalizedHeader === 'update tech svc'
     ) {
       mapping[header] = 'update_tech_svc';
+    } else if (
+      normalizedHeader === 'internal_status' ||
+      cleanHeader === 'internal_status' ||
+      normalizedHeader === 'internal status'
+    ) {
+      mapping[header] = 'internal_status';
     }
     // Fallback to partial matching for common variations
     else if (
@@ -432,8 +432,6 @@ export function createHeaderMapping(headers: string[]): Record<string, keyof Exc
       (normalizedHeader.includes('name') || normalizedHeader.includes('mp'))
     ) {
       mapping[header] = 'mp_service_name';
-    } else if (normalizedHeader.includes('service') && normalizedHeader.includes('path')) {
-      mapping[header] = 'mp_service_path';
     } else if (normalizedHeader.includes('cmdb')) {
       mapping[header] = 'mp_cmdb_id';
     } else if (normalizedHeader.includes('prime') && normalizedHeader.includes('manager')) {
@@ -502,6 +500,8 @@ export function createHeaderMapping(headers: string[]): Record<string, keyof Exc
       mapping[header] = 'update_team_name';
     } else if (normalizedHeader.includes('update') && normalizedHeader.includes('tech')) {
       mapping[header] = 'update_tech_svc';
+    } else if (normalizedHeader.includes('internal') && normalizedHeader.includes('status')) {
+      mapping[header] = 'internal_status';
     }
   });
 
