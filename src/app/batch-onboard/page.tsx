@@ -92,8 +92,7 @@ export default function BatchOnboard() {
       // Prepare update data based on workflow selections
       const excelUpdates: any = {
         user_acknowledge: serviceConfirmed ? 'Yes' : 'No',
-        integrated_with_pd:
-          serviceConfirmed && teamFound !== null && techServiceFound !== null ? 'Yes' : 'No',
+        integrated_with_pd: wantsDynatraceOnboarding ? 'Yes' : 'No', // Based on user's Dynatrace integration choice
         internal_status: 'pending', // Set status to pending when user submits onboarding
       };
 
@@ -102,10 +101,11 @@ export default function BatchOnboard() {
         const selectedTeamData = availableTeams.find(team => team.id === selectedTeam);
         if (selectedTeamData) {
           excelUpdates.pd_team_name = selectedTeamData.name;
+          excelUpdates.team_name_does_not_exist = ''; // Clear this field when API selection is used
         }
       } else {
         excelUpdates.pd_team_name = manualTeamName;
-        excelUpdates.team_name_does_not_exist = 'Yes';
+        excelUpdates.team_name_does_not_exist = manualTeamName; // Store what the user manually typed
       }
 
       // Technical service data
@@ -114,10 +114,11 @@ export default function BatchOnboard() {
         if (selectedTechServiceData) {
           excelUpdates.pd_tech_svc = selectedTechServiceData.name;
           excelUpdates.dt_service_id = selectedTechServiceData.id;
+          excelUpdates.tech_svc_does_not_exist = ''; // Clear this field when API selection is used
         }
       } else {
         excelUpdates.pd_tech_svc = manualTechServiceName;
-        excelUpdates.tech_svc_does_not_exist = 'Yes';
+        excelUpdates.tech_svc_does_not_exist = manualTechServiceName; // Store what the user manually typed
       }
 
       // Dynatrace onboarding
@@ -237,7 +238,9 @@ export default function BatchOnboard() {
                 <h1 className="text-4xl font-semibold text-gray-900 tracking-tight">
                   Batch Onboard Services
                 </h1>
-                <p className="text-lg text-gray-500 mt-2">Onboarding {serviceIds.length} services</p>
+                <p className="text-lg text-gray-500 mt-2">
+                  Onboarding {serviceIds.length} services
+                </p>
               </div>
             </div>
           </div>
