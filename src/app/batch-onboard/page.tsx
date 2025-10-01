@@ -691,8 +691,8 @@ export default function BatchOnboard() {
                             <div className="text-base font-medium text-gray-900">
                               {manualTeamName}
                             </div>
-                            <div className="text-sm text-red-600">
-                              Manually entered - will be flagged for review
+                            <div className="text-sm text-amber-600">
+                              Manually entered (not found in PagerDuty)
                             </div>
                           </div>
                         )}
@@ -715,8 +715,8 @@ export default function BatchOnboard() {
                             <div className="text-base font-medium text-gray-900">
                               {manualTechServiceName}
                             </div>
-                            <div className="text-sm text-red-600">
-                              Manually entered - will be flagged for review
+                            <div className="text-sm text-amber-600">
+                              Manually entered (not found in PagerDuty)
                             </div>
                           </div>
                         )}

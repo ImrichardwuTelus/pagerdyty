@@ -78,7 +78,6 @@ export default function ServiceManagementDashboard() {
   // Progress calculations
   const progress = getOverallProgress();
 
-
   // Get unique values for filters
   const uniqueValues = useMemo(() => {
     const serviceNames = new Set<string>();
@@ -221,136 +220,140 @@ export default function ServiceManagementDashboard() {
   };
 
   // Load initial batch of PagerDuty users with caching
-  const loadPagerDutyUsers = useCallback(async (reset = false) => {
-    try {
-      const isInitialLoad = reset || availableUsers.length === 0;
-      if (isInitialLoad) {
-        setLoadingUsers(true);
-        setCurrentOffset(0);
-        setHasMoreUsers(true);
-      } else {
-        setLoadingMoreUsers(true);
-      }
+  const loadPagerDutyUsers = useCallback(
+    async (reset = false) => {
+      try {
+        const isInitialLoad = reset || availableUsers.length === 0;
+        if (isInitialLoad) {
+          setLoadingUsers(true);
+          setCurrentOffset(0);
+          setHasMoreUsers(true);
+        } else {
+          setLoadingMoreUsers(true);
+        }
 
-      // Check cache validity (10 minutes)
-      const now = Date.now();
-      const cacheValidDuration = 10 * 60 * 1000;
-      const isCacheValid = userCache && (now - userCache.timestamp) < cacheValidDuration;
+        // Check cache validity (10 minutes)
+        const now = Date.now();
+        const cacheValidDuration = 10 * 60 * 1000;
+        const isCacheValid = userCache && now - userCache.timestamp < cacheValidDuration;
 
-      // If we have valid cache and it's initial load, use cached data
-      if (isCacheValid && isInitialLoad && userCache.users.length > 0) {
-        setAvailableUsers(userCache.users);
-        setCurrentOffset(userCache.users.length);
-        setHasMoreUsers(userCache.users.length < userCache.totalCount);
+        // If we have valid cache and it's initial load, use cached data
+        if (isCacheValid && isInitialLoad && userCache.users.length > 0) {
+          setAvailableUsers(userCache.users);
+          setCurrentOffset(userCache.users.length);
+          setHasMoreUsers(userCache.users.length < userCache.totalCount);
+          setLoadingUsers(false);
+          return;
+        }
+
+        const client = getPagerDutyClient();
+        const limit = 25; // Load 25 users at a time
+        const offset = isInitialLoad ? 0 : currentOffset;
+
+        const response = await client.getUsers({
+          limit,
+          offset,
+          include: ['contact_methods', 'notification_rules'],
+        });
+
+        const newUsers = response.users;
+        const hasMore = response.more || false;
+
+        if (isInitialLoad) {
+          // First load or reset
+          setAvailableUsers(newUsers);
+          setUserCache({
+            users: newUsers,
+            allUserIds: new Set(newUsers.map(u => u.id)),
+            totalCount: response.total || newUsers.length,
+            timestamp: now,
+            searchCache: new Map(),
+          });
+        } else {
+          // Append to existing users
+          const updatedUsers = [...availableUsers, ...newUsers];
+          setAvailableUsers(updatedUsers);
+
+          if (userCache) {
+            const updatedCache = {
+              ...userCache,
+              users: updatedUsers,
+              allUserIds: new Set([...userCache.allUserIds, ...newUsers.map(u => u.id)]),
+              timestamp: now,
+            };
+            setUserCache(updatedCache);
+          }
+        }
+
+        setCurrentOffset(offset + newUsers.length);
+        setHasMoreUsers(hasMore);
+      } catch (error) {
+        console.error('Failed to load PagerDuty users:', error);
+        if (reset || availableUsers.length === 0) {
+          setAvailableUsers([]);
+        }
+      } finally {
         setLoadingUsers(false);
+        setLoadingMoreUsers(false);
+      }
+    },
+    [userCache, availableUsers.length, currentOffset]
+  );
+
+  // Global search function that searches ALL users via API
+  const searchAllUsers = useCallback(
+    async (searchQuery: string) => {
+      if (!searchQuery.trim()) {
+        // If no search, load from cache or initial batch
+        if (userCache && userCache.users.length > 0) {
+          setAvailableUsers(userCache.users);
+          setHasMoreUsers(userCache.users.length < userCache.totalCount);
+        } else {
+          loadPagerDutyUsers(true);
+        }
         return;
       }
 
-      const client = getPagerDutyClient();
-      const limit = 25; // Load 25 users at a time
-      const offset = isInitialLoad ? 0 : currentOffset;
+      try {
+        setLoadingUsers(true);
 
-      const response = await client.getUsers({
-        limit,
-        offset,
-        include: ['contact_methods', 'notification_rules']
-      });
+        // Check if we have this search cached
+        if (userCache?.searchCache.has(searchQuery)) {
+          const cachedResults = userCache.searchCache.get(searchQuery)!;
+          setAvailableUsers(cachedResults);
+          setHasMoreUsers(false); // Search results don't have pagination
+          setLoadingUsers(false);
+          return;
+        }
 
-      const newUsers = response.users;
-      const hasMore = response.more || false;
-
-      if (isInitialLoad) {
-        // First load or reset
-        setAvailableUsers(newUsers);
-        setUserCache({
-          users: newUsers,
-          allUserIds: new Set(newUsers.map(u => u.id)),
-          totalCount: response.total || newUsers.length,
-          timestamp: now,
-          searchCache: new Map()
+        const client = getPagerDutyClient();
+        const response = await client.getUsers({
+          query: searchQuery,
+          limit: 100, // Get more results for search
+          include: ['contact_methods', 'notification_rules'],
         });
-      } else {
-        // Append to existing users
-        const updatedUsers = [...availableUsers, ...newUsers];
-        setAvailableUsers(updatedUsers);
 
+        const searchResults = response.users;
+        setAvailableUsers(searchResults);
+        setHasMoreUsers(false); // Search results don't support infinite scroll
+
+        // Cache the search results
         if (userCache) {
           const updatedCache = {
             ...userCache,
-            users: updatedUsers,
-            allUserIds: new Set([...userCache.allUserIds, ...newUsers.map(u => u.id)]),
-            timestamp: now
+            searchCache: new Map(userCache.searchCache).set(searchQuery, searchResults),
           };
           setUserCache(updatedCache);
         }
-      }
-
-      setCurrentOffset(offset + newUsers.length);
-      setHasMoreUsers(hasMore);
-
-    } catch (error) {
-      console.error('Failed to load PagerDuty users:', error);
-      if (reset || availableUsers.length === 0) {
+      } catch (error) {
+        console.error('Failed to search users:', error);
         setAvailableUsers([]);
-      }
-    } finally {
-      setLoadingUsers(false);
-      setLoadingMoreUsers(false);
-    }
-  }, [userCache, availableUsers.length, currentOffset]);
-
-  // Global search function that searches ALL users via API
-  const searchAllUsers = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
-      // If no search, load from cache or initial batch
-      if (userCache && userCache.users.length > 0) {
-        setAvailableUsers(userCache.users);
-        setHasMoreUsers(userCache.users.length < userCache.totalCount);
-      } else {
-        loadPagerDutyUsers(true);
-      }
-      return;
-    }
-
-    try {
-      setLoadingUsers(true);
-
-      // Check if we have this search cached
-      if (userCache?.searchCache.has(searchQuery)) {
-        const cachedResults = userCache.searchCache.get(searchQuery)!;
-        setAvailableUsers(cachedResults);
-        setHasMoreUsers(false); // Search results don't have pagination
+      } finally {
         setLoadingUsers(false);
-        return;
       }
-
-      const client = getPagerDutyClient();
-      const response = await client.getUsers({
-        query: searchQuery,
-        limit: 100, // Get more results for search
-        include: ['contact_methods', 'notification_rules']
-      });
-
-      const searchResults = response.users;
-      setAvailableUsers(searchResults);
-      setHasMoreUsers(false); // Search results don't support infinite scroll
-
-      // Cache the search results
-      if (userCache) {
-        const updatedCache = {
-          ...userCache,
-          searchCache: new Map(userCache.searchCache).set(searchQuery, searchResults)
-        };
-        setUserCache(updatedCache);
-      }
-
-    } catch (error) {
-      console.error('Failed to search users:', error);
-      setAvailableUsers([]);
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, [userCache, loadPagerDutyUsers]);
+    },
+    [userCache, loadPagerDutyUsers]
+  );
 
   // Handle opening prime manager modal
   const handleOpenPrimeManagerModal = useCallback(() => {
@@ -413,7 +416,9 @@ export default function ServiceManagementDashboard() {
           if (writeResponse.ok) {
             const writeResult = await writeResponse.json();
             if (writeResult.success) {
-              console.log(`Prime manager updated for ${selectedServices.size} services successfully`);
+              console.log(
+                `Prime manager updated for ${selectedServices.size} services successfully`
+              );
 
               // Reload the Excel data to sync with the server
               await loadLocalExcelFile('service_data.xlsx');
@@ -438,24 +443,34 @@ export default function ServiceManagementDashboard() {
     } catch (error) {
       console.error('Failed to update prime manager:', error);
     }
-  }, [selectedPrimeManager, selectedServices, updateCell, updateExcelData, loadLocalExcelFile, handleClosePrimeManagerModal]);
+  }, [
+    selectedPrimeManager,
+    selectedServices,
+    updateCell,
+    updateExcelData,
+    loadLocalExcelFile,
+    handleClosePrimeManagerModal,
+  ]);
 
   // Handle search input change with debouncing for global search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSearchChange = useCallback((value: string) => {
-    setPrimeManagerSearch(value);
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setPrimeManagerSearch(value);
 
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+      // Clear previous timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
 
-    // Debounce the global search
-    searchTimeoutRef.current = setTimeout(() => {
-      searchAllUsers(value);
-    }, 300);
-  }, [searchAllUsers]);
+      // Debounce the global search
+      searchTimeoutRef.current = setTimeout(() => {
+        searchAllUsers(value);
+      }, 300);
+    },
+    [searchAllUsers]
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -467,26 +482,36 @@ export default function ServiceManagementDashboard() {
   }, []);
 
   // Handle infinite scroll
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
 
-    // Load more when user scrolls to 90% of the content
-    if (scrollPercentage > 0.9 && hasMoreUsers && !loadingMoreUsers && !primeManagerSearch.trim()) {
-      loadPagerDutyUsers(false);
-    }
-  }, [hasMoreUsers, loadingMoreUsers, primeManagerSearch, loadPagerDutyUsers]);
+      // Load more when user scrolls to 90% of the content
+      if (
+        scrollPercentage > 0.9 &&
+        hasMoreUsers &&
+        !loadingMoreUsers &&
+        !primeManagerSearch.trim()
+      ) {
+        loadPagerDutyUsers(false);
+      }
+    },
+    [hasMoreUsers, loadingMoreUsers, primeManagerSearch, loadPagerDutyUsers]
+  );
 
   // Since we're doing global search via API, we don't need client-side filtering
   const filteredUsers = availableUsers;
 
   // Memoize user count for performance
-  const userCounts = useMemo(() => ({
-    total: userCache?.totalCount || availableUsers.length,
-    filtered: availableUsers.length,
-    hasSearch: primeManagerSearch.trim().length > 0
-  }), [userCache?.totalCount, availableUsers.length, primeManagerSearch]);
-
+  const userCounts = useMemo(
+    () => ({
+      total: userCache?.totalCount || availableUsers.length,
+      filtered: availableUsers.length,
+      hasSearch: primeManagerSearch.trim().length > 0,
+    }),
+    [userCache?.totalCount, availableUsers.length, primeManagerSearch]
+  );
 
   const getCompletionColor = (completion: number) => {
     if (completion >= 90) return 'bg-green-500';
@@ -524,50 +549,76 @@ export default function ServiceManagementDashboard() {
   };
 
   // Memoized User List Item Component for better performance
-  const UserListItem = useCallback(({ user, isSelected, onSelect }: {
-    user: User;
-    isSelected: boolean;
-    onSelect: (name: string) => void;
-  }) => (
-    <label
-      className={`flex items-center p-4 m-2 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
-        isSelected
-          ? 'bg-purple-50 border-purple-200 shadow-md'
-          : 'bg-white border-gray-200 hover:border-purple-200 hover:shadow-sm'
-      }`}
-    >
-      <input
-        type="radio"
-        name="primeManager"
-        value={user.name}
-        checked={isSelected}
-        onChange={e => onSelect(e.target.value)}
-        className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300"
-      />
-      <div className="ml-4 flex-1">
-        <div className="font-semibold text-gray-900 flex items-center">
-          {user.name}
-          {isSelected && (
-            <svg className="w-4 h-4 ml-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  const UserListItem = useCallback(
+    ({
+      user,
+      isSelected,
+      onSelect,
+    }: {
+      user: User;
+      isSelected: boolean;
+      onSelect: (name: string) => void;
+    }) => (
+      <label
+        className={`flex items-center p-4 m-2 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
+          isSelected
+            ? 'bg-purple-50 border-purple-200 shadow-md'
+            : 'bg-white border-gray-200 hover:border-purple-200 hover:shadow-sm'
+        }`}
+      >
+        <input
+          type="radio"
+          name="primeManager"
+          value={user.name}
+          checked={isSelected}
+          onChange={e => onSelect(e.target.value)}
+          className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300"
+        />
+        <div className="ml-4 flex-1">
+          <div className="font-semibold text-gray-900 flex items-center">
+            {user.name}
+            {isSelected && (
+              <svg
+                className="w-4 h-4 ml-2 text-purple-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
+          </div>
+          <div className="text-sm text-gray-600 flex items-center mt-1">
+            <svg
+              className="w-3 h-3 mr-1 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+              />
             </svg>
+            {user.email}
+          </div>
+          {user.role && (
+            <div className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full inline-block mt-2">
+              {user.role}
+            </div>
           )}
         </div>
-        <div className="text-sm text-gray-600 flex items-center mt-1">
-          <svg className="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-          </svg>
-          {user.email}
-        </div>
-        {user.role && (
-          <div className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full inline-block mt-2">
-            {user.role}
-          </div>
-        )}
-      </div>
-    </label>
-  ), []);
-
+      </label>
+    ),
+    []
+  );
 
   // Progress Indicator Component
   const ProgressIndicator = ({ completion }: { completion: number }) => (
@@ -800,7 +851,9 @@ export default function ServiceManagementDashboard() {
                       <button
                         onClick={() => {
                           const selectedIds = Array.from(selectedServices).join(',');
-                          window.location.href = `/batch-onboard?ids=${encodeURIComponent(selectedIds)}`;
+                          window.location.href = `/batch-onboard?ids=${encodeURIComponent(
+                            selectedIds
+                          )}`;
                         }}
                         className="h-11 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm transition-all duration-200 whitespace-nowrap"
                       >
@@ -817,7 +870,7 @@ export default function ServiceManagementDashboard() {
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                           />
                         </svg>
-                        Batch Onboard ({selectedServices.size})
+                        Onboard ({selectedServices.size})
                       </button>
                       <button
                         onClick={handleOpenPrimeManagerModal}
@@ -1044,10 +1097,15 @@ export default function ServiceManagementDashboard() {
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          checked={selectedServices.size > 0 && selectedServices.size === filteredAndSortedData.length}
-                          ref={(input) => {
+                          checked={
+                            selectedServices.size > 0 &&
+                            selectedServices.size === filteredAndSortedData.length
+                          }
+                          ref={input => {
                             if (input) {
-                              input.indeterminate = selectedServices.size > 0 && selectedServices.size < filteredAndSortedData.length;
+                              input.indeterminate =
+                                selectedServices.size > 0 &&
+                                selectedServices.size < filteredAndSortedData.length;
                             }
                           }}
                           onChange={() => {
@@ -1213,10 +1271,10 @@ export default function ServiceManagementDashboard() {
                             row.internal_status === 'complete'
                               ? 'bg-green-100 text-green-800'
                               : row.internal_status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : row.internal_status === 'failed'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-gray-100 text-gray-800'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : row.internal_status === 'failed'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
                           }`}
                         >
                           {row.internal_status || '—'}
@@ -1386,7 +1444,6 @@ export default function ServiceManagementDashboard() {
           </div>
         )}
 
-
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
@@ -1420,7 +1477,7 @@ export default function ServiceManagementDashboard() {
         {showPrimeManagerModal && (
           <div
             className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={(e) => {
+            onClick={e => {
               if (e.target === e.currentTarget) {
                 handleClosePrimeManagerModal();
               }
@@ -1447,15 +1504,27 @@ export default function ServiceManagementDashboard() {
                       Edit Prime Manager
                     </h2>
                     <p className="text-gray-600 mt-2">
-                      Update the prime manager for <span className="font-semibold text-purple-700">{selectedServices.size}</span> selected services
+                      Update the prime manager for{' '}
+                      <span className="font-semibold text-purple-700">{selectedServices.size}</span>{' '}
+                      selected services
                     </p>
                   </div>
                   <button
                     onClick={handleClosePrimeManagerModal}
                     className="p-2 hover:bg-white/60 rounded-lg transition-colors duration-200"
                   >
-                    <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-5 h-5 text-gray-400 hover:text-gray-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -1465,15 +1534,35 @@ export default function ServiceManagementDashboard() {
                 {/* Search Input */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <svg
+                      className="w-4 h-4 mr-2 text-blue-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
                     </svg>
                     Search PagerDuty Users
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
                       </svg>
                     </div>
                     <input
@@ -1496,8 +1585,18 @@ export default function ServiceManagementDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center justify-between">
                     <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      <svg
+                        className="w-4 h-4 mr-2 text-purple-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
                       </svg>
                       Select Prime Manager
                       {selectedPrimeManager && (
@@ -1510,19 +1609,31 @@ export default function ServiceManagementDashboard() {
                       {userCounts.hasSearch
                         ? `${userCounts.filtered} results`
                         : hasMoreUsers
-                          ? `${userCounts.filtered} of ${userCounts.total}+ users`
-                          : `${userCounts.filtered} users`}
+                        ? `${userCounts.filtered} of ${userCounts.total}+ users`
+                        : `${userCounts.filtered} users`}
                     </span>
                   </label>
 
                   {!loadingUsers && filteredUsers.length === 0 && !primeManagerSearch ? (
                     <div className="flex items-center justify-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                       <div className="text-center">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
                         </svg>
                         <h3 className="mt-2 text-sm font-medium text-gray-900">Start searching</h3>
-                        <p className="mt-1 text-sm text-gray-500">Type in the search box to find PagerDuty users</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Type in the search box to find PagerDuty users
+                        </p>
                       </div>
                     </div>
                   ) : (
@@ -1545,7 +1656,9 @@ export default function ServiceManagementDashboard() {
                           {loadingMoreUsers && (
                             <div className="flex items-center justify-center py-4">
                               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                              <span className="ml-2 text-sm text-gray-600">Loading more users...</span>
+                              <span className="ml-2 text-sm text-gray-600">
+                                Loading more users...
+                              </span>
                             </div>
                           )}
 
@@ -1560,11 +1673,23 @@ export default function ServiceManagementDashboard() {
                         <div className="p-8 text-center text-gray-500">
                           {primeManagerSearch ? (
                             <div className="space-y-2">
-                              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              <svg
+                                className="mx-auto h-12 w-12 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
                               </svg>
                               <div className="font-medium text-gray-900">No users found</div>
-                              <div>No users match "{primeManagerSearch}". Try a different search term.</div>
+                              <div>
+                                No users match "{primeManagerSearch}". Try a different search term.
+                              </div>
                             </div>
                           ) : (
                             'Start typing to search for users...'
