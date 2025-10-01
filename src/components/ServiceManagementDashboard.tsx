@@ -380,7 +380,7 @@ export default function ServiceManagementDashboard() {
         updateCell(serviceId, 'prime_manager', selectedPrimeManager);
       });
 
-      // Write changes directly to Excel file via API (like service-onboard does)
+      // Write changes directly to Excel file via API
       const response = await fetch('/api/excel');
       if (response.ok) {
         const result = await response.json();
@@ -1143,9 +1143,6 @@ export default function ServiceManagementDashboard() {
                         <SortIcon column={'internal_status'} />
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1224,36 +1221,6 @@ export default function ServiceManagementDashboard() {
                         >
                           {row.internal_status || '—'}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <button
-                          onClick={() => {
-                            const serviceName = encodeURIComponent(
-                              row.mp_service_name || 'unnamed-service'
-                            );
-                            const serviceId = encodeURIComponent(row.dt_service_id || row.id);
-                            window.location.href = `/service-onboard/${serviceName}?id=${serviceId}&cmdb=${
-                              row.mp_cmdb_id || ''
-                            }&rowId=${row.id}`;
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                          title="Onboard service in PagerDuty"
-                        >
-                          <svg
-                            className="w-3 h-3 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                            />
-                          </svg>
-                          Onboard Service
-                        </button>
                       </td>
                     </tr>
                   ))}
