@@ -292,7 +292,7 @@ export default function BatchOnboard() {
                     />
                   </div>
 
-                  <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                  <div className={`space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 ${teamFound === false ? 'opacity-50 pointer-events-none' : ''}`}>
                     {availableTeams
                       .filter(
                         team =>
@@ -314,6 +314,7 @@ export default function BatchOnboard() {
                             name="selectedTeam"
                             value={team.id}
                             checked={selectedTeam === team.id}
+                            disabled={teamFound === false}
                             onChange={e => {
                               setSelectedTeam(e.target.value);
                               setTeamFound(true);
@@ -358,7 +359,10 @@ export default function BatchOnboard() {
                       Yes, I can see it
                     </button>
                     <button
-                      onClick={() => setTeamFound(false)}
+                      onClick={() => {
+                        setTeamFound(false);
+                        setSelectedTeam(''); // Unselect any selected team from API
+                      }}
                       className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                         teamFound === false
                           ? 'bg-red-600 text-white shadow-md'
@@ -435,7 +439,7 @@ export default function BatchOnboard() {
                     />
                   </div>
 
-                  <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                  <div className={`space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 ${techServiceFound === false ? 'opacity-50 pointer-events-none' : ''}`}>
                     {allServices
                       .filter(
                         svc =>
@@ -460,6 +464,7 @@ export default function BatchOnboard() {
                             name="techService"
                             value={svc.id}
                             checked={selectedTechService === svc.id}
+                            disabled={techServiceFound === false}
                             onChange={e => {
                               setSelectedTechService(e.target.value);
                               setTechServiceFound(true);
@@ -516,7 +521,10 @@ export default function BatchOnboard() {
                       Yes, I can see it
                     </button>
                     <button
-                      onClick={() => setTechServiceFound(false)}
+                      onClick={() => {
+                        setTechServiceFound(false);
+                        setSelectedTechService(''); // Unselect any selected tech service from API
+                      }}
                       className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
                         techServiceFound === false
                           ? 'bg-red-600 text-white shadow-md'
