@@ -124,16 +124,6 @@ export default function BatchOnboard() {
       // Dynatrace onboarding
       if (wantsDynatraceOnboarding) {
         excelUpdates.terraform_onboarding = 'Yes';
-        let finalDynatraceServiceName = dynatraceServiceName;
-        if (!finalDynatraceServiceName) {
-          if (techServiceFound && selectedTechService) {
-            const selectedTechServiceData = allServices.find(svc => svc.id === selectedTechService);
-            finalDynatraceServiceName = selectedTechServiceData?.name || '';
-          } else if (manualTechServiceName) {
-            finalDynatraceServiceName = manualTechServiceName;
-          }
-        }
-        excelUpdates.dt_service_name = finalDynatraceServiceName;
       } else {
         excelUpdates.terraform_onboarding = 'No';
       }
