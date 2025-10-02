@@ -601,9 +601,6 @@ export default function BatchOnboard() {
 
               <div className="space-y-8">
                 <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
-                  <h4 className="text-lg font-semibold text-blue-900 mb-4">
-                    Do you want to integrate all selected services with Dynatrace?
-                  </h4>
                   <p className="text-sm text-blue-800 mb-6">
                     This will apply Dynatrace monitoring integration to all{' '}
                     {selectedServices.length} selected services.
