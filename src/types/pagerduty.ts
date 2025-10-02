@@ -1,108 +1,33 @@
-export interface PagerDutyReference {
+export interface Team {
   id: string;
   type: string;
   summary: string;
   self: string;
   html_url: string;
-}
-
-export interface ContactMethod {
-  id: string;
-  type: string;
-  summary: string;
-  self: string;
-}
-
-export interface NotificationRule {
-  id: string;
-  type: string;
-  summary: string;
-  self: string;
-  html_url: string | null;
-}
-
-export interface Team extends PagerDutyReference {
   name: string;
   description: string;
 }
 
-export interface User extends PagerDutyReference {
+export interface User {
+  id: string;
+  type: string;
+  summary: string;
+  self: string;
+  html_url: string;
   name: string;
   email: string;
-  time_zone: string;
-  color: string;
   role: string;
-  avatar_url: string;
-  description: string;
-  invitation_sent: boolean;
-  created_via_sso: boolean;
-  contact_methods: ContactMethod[];
-  notification_rules: NotificationRule[];
-  job_title: string;
-  teams: Team[];
 }
 
-export interface Integration extends PagerDutyReference {
-  // Additional integration properties can be added here
-}
-
-export interface EscalationPolicy extends PagerDutyReference {
-  // Additional escalation policy properties can be added here
-}
-
-export interface IncidentUrgencyRule {
+export interface Service {
+  id: string;
   type: string;
-  during_support_hours?: {
-    type: string;
-    urgency: string;
-  };
-  outside_support_hours?: {
-    type: string;
-    urgency: string;
-  };
-}
-
-export interface SupportHours {
-  type: string;
-  time_zone: string;
-  start_time: string;
-  end_time: string;
-  days_of_week: number[];
-}
-
-export interface ScheduledAction {
-  type: string;
-  at: {
-    type: string;
-    name: string;
-  };
-  to_urgency: string;
-}
-
-export interface AutoPauseNotificationsParameters {
-  enabled: boolean;
-  timeout: number;
-}
-
-export interface AlertGroupingParameters {
-  type: string;
-}
-
-export interface Service extends PagerDutyReference {
+  summary: string;
+  self: string;
+  html_url: string;
   name: string;
-  auto_resolve_timeout: number;
-  acknowledgement_timeout: number;
-  created_at: string;
   status: string;
-  alert_creation: string;
-  alert_grouping_parameters: AlertGroupingParameters;
-  integrations: Integration[];
-  escalation_policy: EscalationPolicy;
   teams: Team[];
-  incident_urgency_rule: IncidentUrgencyRule;
-  support_hours?: SupportHours;
-  scheduled_actions?: ScheduledAction[];
-  auto_pause_notifications_parameters?: AutoPauseNotificationsParameters;
 }
 
 export interface PagerDutyApiResponse<T> {
@@ -129,7 +54,8 @@ export interface PagerDutyConfig {
   baseUrl?: string;
 }
 
-export interface ExcelServiceData {
+export interface ExcelServiceRow {
+  id: string;
   mp_service_name?: string;
   dt_service_name?: string;
   mp_cmdb_id?: string;
@@ -152,10 +78,6 @@ export interface ExcelServiceData {
   update_team_name?: string;
   update_tech_svc?: string;
   internal_status?: string;
-}
-
-export interface ExcelServiceRow extends ExcelServiceData {
-  id: string;
   completion: number;
   lastUpdated?: string;
 }

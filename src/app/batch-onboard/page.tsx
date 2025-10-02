@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getPagerDutyClient } from '@/lib/pagerduty-client';
 import type { Service, Team, User, ExcelServiceRow } from '@/types/pagerduty';
-import { updateExcelData, writeExcelFile } from '@/lib/excel-utils';
+import { updateExcelData } from '@/lib/excel-utils';
 
 export default function BatchOnboard() {
   const searchParams = useSearchParams();

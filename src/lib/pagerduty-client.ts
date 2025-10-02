@@ -59,13 +59,6 @@ export class PagerDutyClient {
     return this.makeRequest<UsersResponse>('/users', searchParams);
   }
 
-  async getUser(id: string, include?: string[]): Promise<{ user: User }> {
-    const searchParams = new URLSearchParams();
-    if (include) searchParams.append('include[]', include.join(','));
-
-    return this.makeRequest<{ user: User }>(`/users/${id}`, searchParams);
-  }
-
   async getTeams(params?: {
     limit?: number;
     offset?: number;
@@ -78,10 +71,6 @@ export class PagerDutyClient {
     if (params?.query) searchParams.append('query', params.query);
 
     return this.makeRequest<TeamsResponse>('/teams', searchParams);
-  }
-
-  async getTeam(id: string): Promise<{ team: Team }> {
-    return this.makeRequest<{ team: Team }>(`/teams/${id}`);
   }
 
   async getServices(params?: {
@@ -135,13 +124,6 @@ export class PagerDutyClient {
     return allServices;
   }
 
-  async getService(id: string, include?: string[]): Promise<{ service: Service }> {
-    const searchParams = new URLSearchParams();
-    if (include) searchParams.append('include[]', include.join(','));
-
-    return this.makeRequest<{ service: Service }>(`/services/${id}`, searchParams);
-  }
-
   async getAllUsers(): Promise<User[]> {
     const allUsers: User[] = [];
     let offset = 0;
@@ -178,45 +160,6 @@ export class PagerDutyClient {
     return this.getServicesWithDetails();
   }
 
-  async updateService(id: string, serviceData: Partial<Service>): Promise<{ service: Service }> {
-    const url = new URL(`/services/${id}`, this.baseUrl);
-
-    const response = await fetch(url.toString(), {
-      method: 'PUT',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Token token=${this.apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ service: serviceData }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`PagerDuty API error: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
-  async createService(serviceData: Omit<Service, 'id' | 'self' | 'html_url' | 'created_at'>): Promise<{ service: Service }> {
-    const url = new URL('/services', this.baseUrl);
-
-    const response = await fetch(url.toString(), {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Token token=${this.apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ service: serviceData }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`PagerDuty API error: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  }
 }
 
 let pagerDutyClient: PagerDutyClient | null = null;

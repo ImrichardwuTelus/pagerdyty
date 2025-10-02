@@ -24,20 +24,12 @@ export default function ServiceManagementDashboard() {
   const {
     data,
     loading,
-    saving,
     error,
     hasUnsavedChanges,
     validationErrors,
-    loadExcelFile,
     loadLocalExcelFile,
-    saveExcelFile,
-    loadSampleData,
     updateCell,
-    addRow,
-    deleteRow,
-    duplicateRow,
     clearError,
-    resetData,
     getOverallProgress,
   } = useExcelData();
 
@@ -53,7 +45,6 @@ export default function ServiceManagementDashboard() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
 
   // Prime manager editing state
@@ -105,7 +96,7 @@ export default function ServiceManagementDashboard() {
 
   // Apply filters and sorting
   const filteredAndSortedData = useMemo(() => {
-    let filtered = data.filter(row => {
+    const filtered = data.filter(row => {
       // Search filter
       if (filterConfig.searchQuery) {
         const query = filterConfig.searchQuery.toLowerCase();
@@ -827,25 +818,6 @@ export default function ServiceManagementDashboard() {
                   </div>
                 </div>
                 <div className="lg:col-span-6 flex flex-wrap gap-3 justify-end">
-                  <button
-                    onClick={addRow}
-                    className="h-11 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm transition-all duration-200 whitespace-nowrap"
-                  >
-                    <svg
-                      className="w-4 h-4 inline mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      />
-                    </svg>
-                    Add Service
-                  </button>
                   {selectedServices.size > 0 && (
                     <>
                       <button
@@ -1445,35 +1417,6 @@ export default function ServiceManagementDashboard() {
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Row</h3>
-              <p className="text-sm text-gray-500 mb-6">
-                Are you sure you want to delete this row? This action cannot be undone.
-              </p>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => {
-                    deleteRow(showDeleteConfirm);
-                    setShowDeleteConfirm(null);
-                  }}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
               </div>
             </div>
           </div>

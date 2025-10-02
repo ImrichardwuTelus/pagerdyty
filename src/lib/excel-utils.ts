@@ -32,30 +32,11 @@ export const EXCEL_COLUMNS: ExcelColumn[] = [
   { key: 'internal_status', header: 'internal_status', width: 120 },
 ];
 
-/**
- * Converts internal field keys back to proper Excel headers
- */
-export function getExcelHeaders(): Record<keyof ExcelServiceRow, string> {
-  const headerMap: Record<string, string> = {};
-
-  EXCEL_COLUMNS.forEach(col => {
-    headerMap[col.key] = col.key; // Use field key instead of display header
-  });
-
-  return headerMap as Record<keyof ExcelServiceRow, string>;
-}
-
 export interface ExcelReadResult {
   data: ExcelServiceRow[];
   success: boolean;
   error?: string;
   totalRows: number;
-}
-
-export interface ExcelWriteResult {
-  success: boolean;
-  error?: string;
-  fileName?: string;
 }
 
 /**
@@ -92,158 +73,6 @@ export async function readLocalExcelFile(fileName: string): Promise<ExcelReadRes
         error instanceof Error ? error.message : 'Unknown error'
       }`,
       totalRows: 0,
-    };
-  }
-}
-
-/**
- * Reads data from an Excel file
- */
-export function readExcelFile(file: File): Promise<ExcelReadResult> {
-  return new Promise(resolve => {
-    try {
-      const reader = new FileReader();
-
-      reader.onload = e => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-
-          // Get the first worksheet
-          const worksheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[worksheetName];
-
-          // Convert to JSON
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-          if (jsonData.length === 0) {
-            resolve({
-              data: [],
-              success: false,
-              error: 'Excel file is empty',
-              totalRows: 0,
-            });
-            return;
-          }
-
-          // Get headers from first row
-          const headers = jsonData[0] as string[];
-          const dataRows = jsonData.slice(1) as any[][];
-
-          // Map headers to our column keys
-          const headerMapping = createHeaderMapping(headers);
-
-          // Convert rows to ExcelServiceRow objects
-          const excelData: ExcelServiceRow[] = dataRows
-            .filter(row => row.some(cell => cell !== undefined && cell !== ''))
-            .map((row, index) => {
-              const rowData: Partial<ExcelServiceRow> = {
-                id: generateRowId(row, index),
-                lastUpdated: new Date().toISOString(),
-              };
-
-              // Map each cell to the appropriate field
-              headers.forEach((header, colIndex) => {
-                const fieldKey = headerMapping[header];
-                if (fieldKey && colIndex < row.length) {
-                  const cellValue = row[colIndex];
-                  if (cellValue !== undefined && cellValue !== '') {
-                    (rowData as any)[fieldKey] = String(cellValue).trim();
-                  }
-                }
-              });
-
-              // Calculate completion percentage
-              const completedFields = EXCEL_COLUMNS.filter(
-                col => rowData[col.key] && String(rowData[col.key]).trim() !== ''
-              ).length;
-              rowData.completion = Math.round((completedFields / EXCEL_COLUMNS.length) * 100);
-
-              return rowData as ExcelServiceRow;
-            });
-
-          resolve({
-            data: excelData,
-            success: true,
-            totalRows: excelData.length,
-          });
-        } catch (parseError) {
-          resolve({
-            data: [],
-            success: false,
-            error: `Failed to parse Excel file: ${
-              parseError instanceof Error ? parseError.message : 'Unknown error'
-            }`,
-            totalRows: 0,
-          });
-        }
-      };
-
-      reader.onerror = () => {
-        resolve({
-          data: [],
-          success: false,
-          error: 'Failed to read file',
-          totalRows: 0,
-        });
-      };
-
-      reader.readAsArrayBuffer(file);
-    } catch (error) {
-      resolve({
-        data: [],
-        success: false,
-        error: `File reading error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        totalRows: 0,
-      });
-    }
-  });
-}
-
-/**
- * Writes data to the Excel file on the server
- */
-export async function writeExcelFile(
-  data: ExcelServiceRow[],
-  fileName: string = 'service_data.xlsx'
-): Promise<ExcelWriteResult> {
-  try {
-    const response = await fetch('/api/excel', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        data,
-        headers: getExcelHeaders(),
-        preserveHeaders: true,
-        fileName,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to write Excel file: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-
-    if (!result.success) {
-      return {
-        success: false,
-        error: result.error || 'Failed to write Excel file',
-      };
-    }
-
-    return {
-      success: true,
-      fileName: fileName,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: `Failed to write Excel file: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`,
     };
   }
 }
