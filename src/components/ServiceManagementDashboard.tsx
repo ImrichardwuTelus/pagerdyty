@@ -1412,25 +1412,31 @@ export default function ServiceManagementDashboard() {
                       </div>
                       <div className="mt-2 space-y-1">
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">PD Team Name:</span>
+                          <span className="text-gray-500">
+                            PD Team Name associated to Dynatrace Service:
+                          </span>
                           <span className={row.pd_team_name ? 'text-green-600' : 'text-red-500'}>
                             {row.pd_team_name ? '✓' : '✗'}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">PD Tech SVC:</span>
+                          <span className="text-gray-500">
+                            PD Tech SVC associated to Dynatrace Service:
+                          </span>
                           <span className={row.pd_tech_svc ? 'text-green-600' : 'text-red-500'}>
                             {row.pd_tech_svc ? '✓' : '✗'}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">Service:</span>
+                          <span className="text-gray-500">
+                            MP Service instrumented by Dynatrace:
+                          </span>
                           <span className={row.mp_service_name ? 'text-green-600' : 'text-red-500'}>
                             {row.mp_service_name ? '✓' : '✗'}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-500">MP CMDB:</span>
+                          <span className="text-gray-500">MP CMDB Provided:</span>
                           <span className={row.mp_cmdb_id ? 'text-green-600' : 'text-red-500'}>
                             {row.mp_cmdb_id ? '✓' : '✗'}
                           </span>

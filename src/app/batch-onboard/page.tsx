@@ -104,7 +104,7 @@ export default function BatchOnboard() {
           excelUpdates.team_name_does_not_exist = ''; // Clear this field when API selection is used
         }
       } else {
-        excelUpdates.pd_team_name = manualTeamName;
+        excelUpdates.pd_team_name = '';
         excelUpdates.team_name_does_not_exist = manualTeamName; // Store what the user manually typed
       }
 
@@ -117,7 +117,7 @@ export default function BatchOnboard() {
           excelUpdates.tech_svc_does_not_exist = ''; // Clear this field when API selection is used
         }
       } else {
-        excelUpdates.pd_tech_svc = manualTechServiceName;
+        excelUpdates.pd_tech_svc = '';
         excelUpdates.tech_svc_does_not_exist = manualTechServiceName; // Store what the user manually typed
       }
 
@@ -292,7 +292,11 @@ export default function BatchOnboard() {
                     />
                   </div>
 
-                  <div className={`space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 ${teamFound === false ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div
+                    className={`space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 ${
+                      teamFound === false ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
                     {availableTeams
                       .filter(
                         team =>
@@ -439,7 +443,11 @@ export default function BatchOnboard() {
                     />
                   </div>
 
-                  <div className={`space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 ${techServiceFound === false ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div
+                    className={`space-y-3 max-h-96 overflow-y-auto bg-gray-50 rounded-2xl p-6 border border-gray-200 ${
+                      techServiceFound === false ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
                     {allServices
                       .filter(
                         svc =>
